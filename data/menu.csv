@@ -1,0 +1,5 @@
+id,name,price,category,has_attrs,printer
+1,Chicken Rice,3.50,Main,true,food
+2,Beef Noodles,4.00,Main,true,food
+3,Iced Tea,1.00,Beverage,false,drink
+4,Spring Roll,1.50,Side,false,food

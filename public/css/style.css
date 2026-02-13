@@ -1,0 +1,11 @@
+body{font-family: Arial, sans-serif;margin:0;padding:0}
+.app{display:flex;gap:16px;padding:16px}
+#menu{flex:1}
+#cart{width:260px;border-left:1px solid #ddd;padding-left:12px}
+.menu-item{padding:8px;border-bottom:1px solid #eee}
+button{padding:6px 10px}
+
+/* modal */
+.modal{position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center}
+.modal-content{background:#fff;padding:16px;border-radius:6px;min-width:260px}
+.modal-content button{margin:4px}
