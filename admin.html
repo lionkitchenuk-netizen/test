@@ -96,13 +96,21 @@
       <button id="saveConfig">Save Printer Config</button>
       <span id="saveStatus" style="margin-left:8px;color:green"></span>
       <div style="margin-top:15px;padding-top:15px;border-top:1px solid #eee">
-        <h4>Test Print</h4>
+        <h4>Test Print (via Server)</h4>
         <div class="form-group">
           <label>Test Printer IP: <input id="testIp" type="text" placeholder="192.168.x.x" /></label>
           <label>Port: <input id="testPort" type="number" value="9100" style="width:80px"/></label>
         </div>
-        <button id="testPrint" class="test-print-btn">Test Print</button>
+        <button id="testPrint" class="test-print-btn">Test Print (Server)</button>
         <span id="testStatus" style="margin-left:8px"></span>
+      </div>
+      <div style="margin-top:15px;padding-top:15px;border-top:1px solid #eee">
+        <h4>Test Print (via Epson ePOS SDK)</h4>
+        <div class="form-group">
+          <label>Printer IP: <input id="eposIp" type="text" placeholder="192.168.x.x" value="192.168.18.50" /></label>
+        </div>
+        <button id="testPrintEpos" style="background:#2196F3;">Test Print (ePOS SDK)</button>
+        <span id="eposStatus" style="margin-left:8px"></span>
       </div>
     </section>
     <section>
@@ -116,5 +124,61 @@
   </div>
   <script src="js/data.js"></script>
   <script src="js/admin.js"></script>
+  <script src="epos-2.27.0.js"></script>
+  <script>
+    // Epson TM-m30 HTTP Print - uses printer's built-in web server
+    async function testPrintEpos() {
+      const ip = document.getElementById('eposIp').value;
+      const status = document.getElementById('eposStatus');
+      
+      if (!ip) {
+        status.textContent = 'Please enter printer IP';
+        status.style.color = 'red';
+        return;
+      }
+      
+      status.textContent = 'Sending print via HTTP...';
+      status.style.color = '#666';
+      
+      try {
+        // TM-m30 can print via HTTP POST to its web interface
+        // Build ESC/POS commands manually
+        const ESC = '\x1B';
+        const LF = '\x0A';
+        
+        let printData = '';
+        printData += ESC + '@';  // Initialize
+        printData += 'TEST PRINT' + LF;
+        printData += '==========' + LF + LF;
+        printData += 'Hello World!' + LF;
+        printData += LF + LF + LF + LF;
+        
+        // Send via server proxy to avoid CORS
+        const response = await fetch('/api/print/http', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ip: ip,
+            data: printData
+          })
+        });
+        
+        if (response.ok) {
+          status.textContent = 'Print sent! Check printer';
+          status.style.color = 'green';
+        } else {
+          const err = await response.text();
+          status.textContent = 'Error: ' + err;
+          status.style.color = 'red';
+        }
+      } catch (e) {
+        status.textContent = 'Error: ' + e.message;
+        status.style.color = 'red';
+        console.error('Print Error:', e);
+      }
+    }
+    
+    document.getElementById('testPrintEpos').addEventListener('click', testPrintEpos);
+  </script>
 </body>
 </html>

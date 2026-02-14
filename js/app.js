@@ -534,6 +534,22 @@ async function submitOrder() {
     printResults: []
   };
   
+  // Try to send to server for printing
+  try {
+    const response = await fetch('/api/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(order)
+    });
+    if (response.ok) {
+      const result = await response.json();
+      console.log('Order sent to server, print result:', result);
+    }
+  } catch (e) {
+    console.log('Server not available, saving locally only');
+  }
+  
+  // Also save locally
   saveOrder(order);
   
   $q('#orderId').textContent = orderId;

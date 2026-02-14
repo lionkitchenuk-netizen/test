@@ -306,6 +306,22 @@ app.post('/api/admin/test-print', async (req, res) => {
   }
 });
 
+// HTTP Print via printer's web interface
+app.post('/api/print/http', async (req, res) => {
+  try {
+    const { ip, data } = req.body;
+    if (!ip) return res.status(400).json({ error: 'missing ip' });
+    
+    // Fall back to raw TCP
+    const rawData = Buffer.from(data, 'latin1');
+    await sendToPrinter(ip, 9100, rawData);
+    res.json({ ok: true, message: 'Printed via raw TCP' });
+  } catch (err) {
+    console.error('HTTP Print error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 function buildTestPrintData(){
   // Just plain ASCII text with line feeds - no ESC/POS commands at all
   const text = 'TEST PRINT\n==========\n\nHello World!\n\n\n\n\n';

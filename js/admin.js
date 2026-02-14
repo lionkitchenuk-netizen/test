@@ -128,12 +128,25 @@ function importCSV(type, csvText) {
 }
 
 function loadOrders() {
-  const orders = getOrders();
+  // Try to load from server first
+  fetch('/api/orders')
+    .then(res => res.json())
+    .then(orders => {
+      displayOrders(orders);
+    })
+    .catch(() => {
+      // Fall back to localStorage
+      const orders = getOrders();
+      displayOrders(orders);
+    });
+}
+
+function displayOrders(orders) {
   const ul = document.getElementById('ordersList');
   ul.innerHTML = '';
   
-  if (orders.length === 0) {
-    ul.innerHTML = `<li class="empty">${t('noOrders')}</li>`;
+  if (!orders || orders.length === 0) {
+    ul.innerHTML = '<li class="empty">No orders</li>';
     return;
   }
   
@@ -149,11 +162,16 @@ function loadOrders() {
       </div>
       <div class="order-items">${itemsHtml}</div>
       <div class="order-total">Total: $${o.total}</div>
-      <button class="mark-paid-btn" data-id="${o.id}">${t('markPaid')}</button>
+      <button class="mark-paid-btn" data-id="${o.id}">Mark Paid</button>
     `;
     li.querySelector('button').addEventListener('click', () => {
-      removeOrder(o.id);
-      loadOrders();
+      // Try server first, then localStorage
+      fetch('/api/orders/' + o.id + '/pay', { method: 'POST' })
+        .then(() => loadOrders())
+        .catch(() => {
+          removeOrder(o.id);
+          loadOrders();
+        });
     });
     ul.appendChild(li);
   });
