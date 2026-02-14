@@ -1,160 +1,72 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lion Kitchen | Authentic HK Cha Chaan Teng</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        :root {
-            --hk-red: #cc0000;
-            --hk-yellow: #ffcc00;
-            --dark: #1a1a1a;
-            --cream: #fff9e6;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'PingFang HK', 'Helvetica Neue', sans-serif; }
-        body { background-color: var(--cream); color: #333; overflow-x: hidden; }
-        
-        /* Navigation with Logo */
-        nav { background: var(--hk-red); color: white; padding: 0.5rem 5%; position: fixed; width: 100%; top: 0; z-index: 1000; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-        .logo-container { display: flex; align-items: center; text-decoration: none; color: white; }
-        .logo-img { height: 50px; margin-right: 12px; border-radius: 5px; }
-        .logo-text { font-size: 1.4rem; font-weight: bold; letter-spacing: 1px; }
-
-        nav ul { display: flex; list-style: none; }
-        nav ul li { margin-left: 20px; }
-        nav ul li a { color: white; text-decoration: none; font-weight: bold; font-size: 0.9rem; }
-
-        /* Slideshow Hero Section */
-        .hero-slider {
-            position: relative;
-            height: 70vh;
-            width: 100%;
-            overflow: hidden;
-            margin-top: 60px; /* Space for nav */
-        }
-        .slide {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            transition: opacity 1.5s ease-in-out;
-            background-size: cover;
-            background-position: center;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            text-align: center;
-        }
-        .slide.active { opacity: 1; }
-        .slide::after { content: ""; position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.4); z-index: 1; }
-        
-        .hero-content { position: relative; z-index: 2; }
-        .hero-title { font-size: 3.5rem; text-shadow: 2px 2px 10px rgba(0,0,0,0.5); }
-        .hero-subtitle { font-size: 1.3rem; background: var(--hk-yellow); color: var(--hk-red); padding: 5px 15px; font-weight: bold; display: inline-block; margin-top: 10px; }
-
-        /* Menu & Sections */
-        section { padding: 60px 5%; max-width: 1200px; margin: auto; }
-        .section-title { text-align: center; margin-bottom: 40px; color: var(--hk-red); font-size: 2.2rem; border-bottom: 3px solid var(--hk-red); display: inline-block; width: 100%; padding-bottom: 10px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        
-        .btn-order { background: var(--hk-yellow); color: var(--hk-red); padding: 15px 40px; text-decoration: none; border-radius: 30px; font-weight: 900; font-size: 1.2rem; display: inline-block; margin: 20px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: 0.3s; }
-        .btn-order:hover { transform: scale(1.05); background: #f0c000; }
-
-        footer { background: var(--dark); color: white; padding: 40px 5%; text-align: center; }
-
-        @media (max-width: 600px) { .hero-title { font-size: 2.2rem; } nav ul { display: none; } }
-    </style>
+  <meta charset="utf-8" />
+  <title>POS Self Order</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;color:#333;line-height:1.5}
+    .app{min-height:100vh;display:flex;flex-direction:column}
+    .table-selection{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:linear-gradient(135deg,#667eea,#764ba2)}
+    .table-selection h1{color:white;font-size:2rem;margin-bottom:30px}
+    .table-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px;max-width:400px}
+    .table-btn{aspect-ratio:1;font-size:1.5rem;font-weight:bold;background:white;border:none;border-radius:12px;cursor:pointer}
+    .lang-switch{display:flex;gap:10px;margin-top:40px}
+    .lang-btn{padding:10px 20px;background:rgba(255,255,255,0.2);border:2px solid white;color:white;border-radius:25px;cursor:pointer}
+    .lang-btn.active{background:white;color:#667eea}
+    .menu-view{display:flex;flex-direction:column;min-height:100vh}
+    .menu-view>header{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:15px 20px;display:flex;align-items:center;justify-content:space-between}
+    .back-btn{background:rgba(255,255,255,0.2);border:none;color:white;padding:8px 12px;border-radius:6px;cursor:pointer}
+    .table-badge{background:rgba(255,255,255,0.2);padding:6px 12px;border-radius:20px}
+    .menu-view .content{display:flex;flex:1}
+    #menu{flex:1;overflow-y:auto;padding:15px}
+    #menu h3{color:#667eea;margin-bottom:15px;padding-bottom:8px;border-bottom:2px solid #667eea}
+    .menu-item{display:flex;justify-content:space-between;align-items:center;background:white;padding:15px;margin-bottom:10px;border-radius:10px}
+    .menu-item.set-item{border-left:4px solid #667eea}
+    .item-info{flex:1}
+    .item-info strong{display:block;font-size:1.1rem;margin-bottom:4px}
+    .price{font-weight:bold}
+    .add-btn{background:#667eea;color:white;border:none;padding:8px 16px;border-radius:20px;cursor:pointer}
+    #cart{width:300px;background:white;border-left:1px solid #eee;padding:15px}
+    #cart h3{color:#667eea;margin-bottom:15px}
+    #cartList{list-style:none;margin-bottom:15px}
+    #cartList li{padding:10px 0;border-bottom:1px solid #eee}
+    .cart-total{display:flex;justify-content:space-between;padding:15px 0;border-top:2px solid #667eea;font-weight:bold}
+    .cart-actions{display:flex;flex-direction:column;gap:10px}
+    .cart-actions button{padding:15px;border:none;border-radius:10px;font-weight:bold;cursor:pointer}
+    #reviewOrder{background:#f0f0f0}
+    #submitOrder{background:linear-gradient(135deg,#667eea,#764ba2);color:white}
+    .modal{position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+    .modal-content{background:white;padding:25px;border-radius:15px;min-width:280px}
+    #attrOptions{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px}
+    #attrOptions button{padding:12px 20px;background:#f0f0f0;border:none;border-radius:8px;cursor:pointer}
+    .modal-content button:not(#attrOptions button){padding:10px 20px;border:none;border-radius:8px;cursor:pointer;margin-right:10px;margin-top:15px}
+    #attrOk{background:#667eea;color:white}
+    #attrCancel{background:#e0e0e0}
+    .modal-content.success{text-align:center}
+    .modal-content.success h2{font-size:4rem;color:#4caf50}
+    .modal-content.success h3{color:#4caf50;margin:10px 0}
+    .modal-content.success button{margin-top:20px;padding:15px 30px;background:#667eea;color:white;border:none;border-radius:25px;cursor:pointer}
+    .review-view{min-height:100vh;background:#f5f5f5}
+    .review-view>header{background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:15px 20px}
+    .review-content{padding:20px;max-width:600px;margin:0 auto}
+    .review-table-items{width:100%;background:white;border-radius:10px;overflow:hidden}
+    .review-table-items th,.review-table-items td{padding:12px 15px;text-align:left;border-bottom:1px solid #eee}
+    .review-table-items th{background:#f8f8f8}
+    .review-table-items tfoot td{background:#f8f8f8}
+    .review-actions{display:flex;gap:15px;margin-top:25px}
+    .review-actions button{flex:1;padding:15px;border:none;border-radius:10px;font-weight:bold;cursor:pointer}
+    .remove-btn{background:none;border:none;color:#ff4444;font-size:1.2rem;cursor:pointer}
+    @media(max-width:768px){
+      .menu-view .content{flex-direction:column}
+      #cart{width:100%;border-left:none;border-top:1px solid #eee}
+    }
+  </style>
 </head>
 <body>
-
-    <nav>
-        <a href="#home" class="logo-container">
-            <img src="images/logo.png" alt="Lion Kitchen Logo" class="logo-img" onerror="this.style.display='none'">
-            <span class="logo-text">獅房菜 Lion Kitchen</span>
-        </a>
-        <ul>
-            <li><a href="#menu">MENU</a></li>
-            <li><a href="Order.html">ORDER ONLINE</a></li>
-        </ul>
-    </nav>
-
-    <div class="hero-slider" id="home">
-        <!-- Slide 1 -->
-        <div class="slide active" style="background-image: url('images/slide1.jpg');">
-            <div class="hero-content">
-                <h2 class="hero-title">AUTHENTIC HK TASTE</h2>
-                <p class="hero-subtitle">Experience the Real Cha Chaan Teng 經典港式風味</p>
-                <br>
-                <a href="Order.html" class="btn-order">ORDER NOW 外賣</a>
-            </div>
-        </div>
-        <!-- Slide 2 -->
-        <div class="slide" style="background-image: url('images/slide2.jpg');">
-            <div class="hero-content">
-                <h2 class="hero-title">CRISPY FRENCH TOAST</h2>
-                <p class="hero-subtitle">Our Signature Golden Delight 招牌西多士</p>
-            </div>
-        </div>
-        <!-- Slide 3 -->
-        <div class="slide" style="background-image: url('images/slide3.jpg');">
-            <div class="hero-content">
-                <h2 class="hero-title">SILKY MILK TEA</h2>
-                <p class="hero-subtitle">Traditional Brewed Tea 港式絲襪奶茶</p>
-            </div>
-        </div>
-    </div>
-    </section>
-<!-- Map & Contact Section -->
-    <section id="contact" style="background: white; padding-bottom: 0;">
-        <h3 class="section-title">Visit Us 蒞臨本店</h3>
-        
-        <div class="contact-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; text-align: left;">
-            
-            <!-- Contact Info -->
-            <div class="contact-info" style="padding: 20px;">
-                <p style="font-size: 1.2rem; margin-bottom: 15px;">
-                    <i class="fas fa-map-marker-alt" style="color:var(--hk-red)"></i> 
-                    <strong>Address:</strong><br>
-                    Nottingham Road, Bingham, Nottingham, NG13 8AT
-                </p>
-                <p style="font-size: 1.2rem; margin-bottom: 15px;">
-                    <i class="fas fa-phone" style="color:var(--hk-red)"></i> 
-                    <strong>Phone:</strong><br>
-                    TBC
-                </p>
-                <p style="font-size: 1.2rem; margin-bottom: 15px;">
-                    <i class="fas fa-clock" style="color:var(--hk-red)"></i> 
-                    <strong>Hours:</strong><br>
-                    Mon - Sun: 09:00 - 17:00
-                </p>
-                <a href="https://www.google.com/maps/dir//Your+Restaurant+Address+Here" target="_blank" class="btn-order" style="font-size: 1rem; padding: 10px 20px;">
-                    Get Directions 路線導航
-                </a>
-            </div>
-
-            <!-- Google Map -->
-            <div class="map-wrapper" style="position: relative; overflow: hidden; padding-top: 56.25%; border: 2px solid var(--hk-red); border-radius: 15px; margin-bottom: 40px;">
-                <!-- REPLACE THE IFRAME BELOW WITH YOUR OWN GOOGLE MAPS EMBED CODE -->
-                <iframe 
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d600.955926642842!2d-0.9576864008026122!3d52.951595100000006!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x4879cf809f858b85%3A0xdf174c80ad4b2135!2sLion%20Kitchen%20Restaurant!5e0!3m2!1szh-TW!2suk!4v1768059028345!5m2!1szh-TW!2suk" 
-                    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border:0;" 
-                    allowfullscreen="" 
-                    loading="lazy" 
-                    referrerpolicy="no-referrer-when-downgrade">
-                </iframe>
-            </div>
-        </div>
-    </section>
-    <footer>
-        <p>LION KITCHEN | 獅房菜</p>
-        <p style="color: #666; font-size: 0.9rem; margin-top: 10px;">Nottingham Road, Bingham, Nottingham, NG13 8AT</p>
-        <div style="margin-top: 20px;">
-            <a href="https://admin.hklionkitchen.co.uk" style="color:#444; font-size: 0.7rem;">Staff Login</a>
-        </div>
-    </footer>
-
+  <div class="app" id="app"></div>
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>

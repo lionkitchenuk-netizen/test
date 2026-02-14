@@ -175,14 +175,12 @@ function showAttrModal(attrName, options) {
 }
 
 function loadMenu() {
-  // Initialize data from localStorage
   initData();
   const data = getData();
   
   MENU.items = data.items;
   MENU.attrs = data.attrs;
   
-  // Filter sets by current time
   const now = new Date();
   MENU.activeSets = data.sets.filter(s => {
     if (!s.time_start || !s.time_end) return true;
@@ -507,14 +505,6 @@ function renderOrderReview() {
   $q('#confirmSubmit').addEventListener('click', submitOrder);
 }
 
-// Print function using raw TCP socket (browser limitation - may not work)
-async function sendToPrinter(ip, port, data) {
-  // Note: Browsers cannot directly connect to TCP sockets
-  // This is a simulation - in production you'd need a backend service
-  console.log('Print simulation:', { ip, port, data: data.substring(0, 50) });
-  return { success: true, message: 'Print job queued (browser cannot directly print - use admin panel)' };
-}
-
 async function submitOrder() {
   if (!SELECTED_TABLE) {
     alert(t('selectTableFirst'));
@@ -544,17 +534,7 @@ async function submitOrder() {
     printResults: []
   };
   
-  // Save order to localStorage
   saveOrder(order);
-  
-  // Try to print (will show simulation message)
-  const data = getData();
-  if (data.config && data.config.printer) {
-    for (const item of order.items) {
-      const printData = `Table: ${order.table}\n${item.name} x${item.qty}\n${item.attrs ? item.attrs.join(', ') : ''}\nTotal: $${order.total}\n`;
-      await sendToPrinter(data.config.printer.food.ip, data.config.printer.food.port, printData);
-    }
-  }
   
   $q('#orderId').textContent = orderId;
   $q('#successModal').style.display = 'block';

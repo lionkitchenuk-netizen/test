@@ -22,7 +22,6 @@ const DEFAULT_DATA = {
   }
 };
 
-// localStorage keys
 const STORAGE_KEYS = {
   MENU: 'pos_menu',
   SETS: 'pos_sets',
@@ -31,7 +30,6 @@ const STORAGE_KEYS = {
   ORDERS: 'pos_orders'
 };
 
-// Initialize data from localStorage or defaults
 function getData() {
   const menu = localStorage.getItem(STORAGE_KEYS.MENU);
   const sets = localStorage.getItem(STORAGE_KEYS.SETS);
@@ -46,32 +44,27 @@ function getData() {
   };
 }
 
-// Save data to localStorage
 function saveData(type, data) {
   localStorage.setItem(STORAGE_KEYS[type], JSON.stringify(data));
 }
 
-// Get orders from localStorage
 function getOrders() {
   const orders = localStorage.getItem(STORAGE_KEYS.ORDERS);
   return orders ? JSON.parse(orders) : [];
 }
 
-// Save order to localStorage
 function saveOrder(order) {
   const orders = getOrders();
   orders.push(order);
   localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(orders));
 }
 
-// Remove order from localStorage
 function removeOrder(orderId) {
   const orders = getOrders();
   const filtered = orders.filter(o => o.id !== orderId);
   localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify(filtered));
 }
 
-// Initialize with defaults if empty
 function initData() {
   if (!localStorage.getItem(STORAGE_KEYS.MENU)) {
     localStorage.setItem(STORAGE_KEYS.MENU, JSON.stringify(DEFAULT_DATA.menu));
@@ -89,59 +82,3 @@ function initData() {
     localStorage.setItem(STORAGE_KEYS.ORDERS, JSON.stringify([]));
   }
 }
-
-// Export data as CSV format for download
-function exportAsCSV(type) {
-  const data = getData();
-  let headers = [];
-  let rows = [];
-  
-  if (type === 'menu') {
-    headers = ['id', 'name', 'price', 'category', 'has_attrs', 'printer'];
-    rows = data.items;
-  } else if (type === 'sets') {
-    headers = ['id', 'name', 'price', 'time_start', 'time_end', 'items'];
-    rows = data.sets;
-  } else if (type === 'attributes') {
-    headers = ['id', 'item_id', 'attr_name', 'options'];
-    rows = data.attrs;
-  }
-  
-  return [headers.join(','), ...rows.map(r => headers.map(h => r[h] || '').join(','))].join('\n');
-}
-
-// Import data from CSV
-function importFromCSV(type, csvText) {
-  const lines = csvText.trim().split('\n');
-  if (lines.length < 2) return false;
-  
-  const headers = lines[0].split(',').map(h => h.trim());
-  const rows = lines.slice(1).map(line => {
-    const values = line.split(',');
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = values[i]?.trim() || '');
-    return obj;
-  });
-  
-  const keyMap = { menu: 'MENU', sets: 'SETS', attributes: 'ATTRS' };
-  saveData(keyMap[type], rows);
-  return true;
-}
-</parameter>
-<task_progress>
-- [x] Analyze requirements
-- [x] Set up project structure
-- [x] Create menu data and configuration
-- [x] Implement table selection UI
-- [x] Implement set menu display based on time
-- [x] Implement single food selection
-- [x] Implement food attribute selection
-- [x] Implement cart functionality
-- [x] Implement order review and submission
-- [x] Create admin interface
-- [x] Implement printer integration
-- [x] Add language support (Cantonese/English)
-- [x] Adapt for Cloudflare Pages deployment (fully static with localStorage)
-</task_progress>
-</invoke>
-</minimax:tool_call>

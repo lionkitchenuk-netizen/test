@@ -1,6 +1,0 @@
-# Cloudflare Pages redirect rules
-# Serve admin.html at /admin
-/admin /admin.html 200
-
-# API calls need to be handled by a separate backend server
-# For Cloudflare Pages, you'll need to keep the Node.js server running locally or on a VPS

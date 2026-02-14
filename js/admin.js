@@ -1,6 +1,5 @@
 // Admin functionality - Static Version with localStorage
 
-// ==================== Internationalization ====================
 const I18N = {
   en: {
     csvManagement: 'CSV Management',
@@ -66,19 +65,18 @@ function t(key) {
   return I18N[currentLang][key] || I18N.en[key] || key;
 }
 
-// ==================== CSV Functions ====================
 function loadCSVPreview(type) {
   const data = getData();
   let rows = [];
   let headers = [];
   
-  if (type === 'menu') {
+  if (type === 'menu.csv') {
     headers = ['id', 'name', 'price', 'category', 'has_attrs', 'printer'];
     rows = data.items;
-  } else if (type === 'sets') {
+  } else if (type === 'sets.csv') {
     headers = ['id', 'name', 'price', 'time_start', 'time_end', 'items'];
     rows = data.sets;
-  } else if (type === 'attributes') {
+  } else if (type === 'attributes.csv') {
     headers = ['id', 'item_id', 'attr_name', 'options'];
     rows = data.attrs;
   }
@@ -93,13 +91,13 @@ function validateCSV(type, csvText) {
   
   const headers = lines[0].split(',').map(h => h.trim());
   
-  if (type === 'menu') {
+  if (type === 'menu.csv') {
     const want = ['id', 'name', 'price', 'category', 'has_attrs'];
     return want.every(c => headers.includes(c));
-  } else if (type === 'sets') {
+  } else if (type === 'sets.csv') {
     const want = ['id', 'name', 'price', 'time_start', 'time_end', 'items'];
     return want.every(c => headers.includes(c));
-  } else if (type === 'attributes') {
+  } else if (type === 'attributes.csv') {
     const want = ['id', 'item_id', 'attr_name', 'options'];
     return want.every(c => headers.includes(c));
   }
@@ -118,18 +116,17 @@ function importCSV(type, csvText) {
     return obj;
   });
   
-  if (type === 'menu') {
+  if (type === 'menu.csv') {
     saveData('MENU', rows);
-  } else if (type === 'sets') {
+  } else if (type === 'sets.csv') {
     saveData('SETS', rows);
-  } else if (type === 'attributes') {
+  } else if (type === 'attributes.csv') {
     saveData('ATTRS', rows);
   }
   
   return true;
 }
 
-// ==================== Order Functions ====================
 function loadOrders() {
   const orders = getOrders();
   const ul = document.getElementById('ordersList');
@@ -162,7 +159,6 @@ function loadOrders() {
   });
 }
 
-// ==================== Config Functions ====================
 function loadConfig() {
   const data = getData();
   if (data.config && data.config.printer) {
@@ -196,21 +192,17 @@ function saveConfig() {
   setTimeout(() => status.textContent = '', 2000);
 }
 
-// ==================== Test Print ====================
 function testPrint() {
   const ip = document.getElementById('testIp').value;
   const port = Number(document.getElementById('testPort').value) || 9100;
   const status = document.getElementById('testStatus');
   
-  // Note: Browsers cannot directly connect to TCP printers
-  // This is a simulation
   status.textContent = 'Print simulation: IP ' + ip + ':' + port + ' - Browser cannot directly print to network printers';
   status.style.color = '#666';
   
   console.log('Test print to:', ip, port);
 }
 
-// ==================== Data Management ====================
 function resetToDefaults() {
   if (confirm(t('clearConfirm'))) {
     localStorage.clear();
@@ -222,11 +214,9 @@ function resetToDefaults() {
   }
 }
 
-// ==================== Initialize ====================
 document.addEventListener('DOMContentLoaded', () => {
   initData();
   
-  // CSV Management
   const sel = document.getElementById('csvSelect');
   loadCSVPreview(sel.value);
   sel.addEventListener('change', () => loadCSVPreview(sel.value));
@@ -254,17 +244,13 @@ document.addEventListener('DOMContentLoaded', () => {
     else alert(t('validationFailed'));
   });
 
-  // Orders - refresh every 3 seconds
   loadOrders();
   setInterval(loadOrders, 3000);
 
-  // Printer config
   loadConfig();
   document.getElementById('saveConfig').addEventListener('click', saveConfig);
 
-  // Test print
   document.getElementById('testPrint').addEventListener('click', testPrint);
   
-  // Data management
   document.getElementById('resetDefaults').addEventListener('click', resetToDefaults);
 });
