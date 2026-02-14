@@ -291,23 +291,26 @@ app.post('/api/admin/test-print', async (req, res) => {
 });
 
 function buildTestPrintData(){
+  // Try simpler ESC/POS commands
   const ESC = '\x1B';
   const GS = '\x1D';
+  const LF = '\x0A';
+  
   let parts = [];
   
-  parts.push(ESC + '@'); // initialize
-  parts.push(ESC + 'a' + '\x01'); // center
-  parts.push(ESC + 'E' + '\x01'); // bold on
-  parts.push('TEST PRINT\n');
-  parts.push(ESC + 'E' + '\x00'); // bold off
-  parts.push(new Date().toLocaleString() + '\n');
-  parts.push('-------------------------\n');
-  parts.push(ESC + 'a' + '\x00'); // left align
-  parts.push('Printer connection OK!\n');
-  parts.push('\n\n');
-  parts.push(GS + 'V' + '\x01'); // full cut
+  // Initialize printer
+  parts.push(ESC + '@');
   
-  return Buffer.from(parts.join(''), 'binary');
+  // Just simple text first
+  parts.push('=== TEST PRINT ===' + LF);
+  parts.push('===================' + LF);
+  parts.push('' + LF);
+  parts.push('Hello Printer!' + LF);
+  parts.push('' + LF);
+  parts.push('' + LF);
+  parts.push('' + LF);
+  
+  return Buffer.from(parts.join(''), 'utf8');
 }
 
 const PORT = process.env.PORT || 3000;
