@@ -48,13 +48,38 @@
       <h3>Printer Setup Guide</h3>
       <div style="background:#f8f8f8;padding:15px;border-radius:8px;margin-bottom:15px">
         <p style="margin-bottom:10px"><strong>Why print doesn't work directly?</strong></p>
-        <p style="font-size:0.9rem;color:#666;margin-bottom:10px">Browsers cannot directly connect to network printers (TCP/IP). Cloudflare Pages is a static hosting service - it only serves files, no backend code.</p>
-        <p style="font-size:0.9rem;color:#666"><strong>Solutions:</strong></p>
-        <ol style="font-size:0.9rem;color:#666;margin-left:20px;margin-top:5px">
-          <li style="margin-bottom:5px"><strong>Option A - Use server.js:</strong> Keep Node.js server running locally (server.js). Orders show in admin on same device.</li>
-          <li style="margin-bottom:5px"><strong>Option B - Print service:</strong> Use a print relay service like PrintNode (printnode.com) - browser prints to their service, relays to your printer.</li>
-          <li style="margin-bottom:5px"><strong>Option C - Local proxy:</strong> Run a small local server that receives print commands and sends to printer.</li>
+        <p style="font-size:0.9rem;color:#666;margin-bottom:15px">Browsers cannot directly connect to network printers (TCP/IP). Cloudflare Pages is a static hosting service - it only serves files, no backend code.</p>
+        
+        <p style="font-size:0.9rem;color:#666;margin-bottom:10px"><strong>OPTION A - Use Local Node.js Server (Recommended for testing)</strong></p>
+        <ol style="font-size:0.85rem;color:#666;margin-left:20px;margin-bottom:15px">
+          <li style="margin-bottom:5px">Install Node.js from <a href="https://nodejs.org" target="_blank">nodejs.org</a></li>
+          <li style="margin-bottom:5px">Open terminal, navigate to project folder</li>
+          <li style="margin-bottom:5px">Run: <code>npm install</code></li>
+          <li style="margin-bottom:5px">Run: <code>node server.js</code></li>
+          <li style="margin-bottom:5px">Open <code>http://localhost:3000</code> for customer page</li>
+          <li style="margin-bottom:5px">Open <code>http://localhost:3000/admin.html</code> for admin</li>
+          <li style="margin-bottom:5px">Keep terminal open - printing will work!</li>
         </ol>
+        
+        <p style="font-size:0.9rem;color:#666;margin-bottom:10px"><strong>OPTION B - Use PrintNode Service (For production)</strong></p>
+        <ol style="font-size:0.85rem;color:#666;margin-left:20px;margin-bottom:15px">
+          <li style="margin-bottom:5px">Go to <a href="https://printnode.com" target="_blank">printnode.com</a> and create account</li>
+          <li style="margin-bottom:5px">Download and install PrintNode Client on a Windows PC connected to printer</li>
+          <li style="margin-bottom:5px">Get your Account ID from PrintNode dashboard</li>
+          <li style="margin-bottom:5px">Note the Printer ID from PrintNode</li>
+          <li style="margin-bottom:5px">You would need to modify code to use PrintNode API - requires developer work</li>
+        </ol>
+        
+        <p style="font-size:0.9rem;color:#666;margin-bottom:10px"><strong>OPTION C - Use Cloudflare Workers (Advanced)</strong></p>
+        <ol style="font-size:0.85rem;color:#666;margin-left:20px;margin-bottom:15px">
+          <li style="margin-bottom:5px">Create a Cloudflare Worker</li>
+          <li style="margin-bottom:5px">Write JavaScript code to handle print requests</li>
+          <li style="margin-bottom:5px">Use fetch() to send ESC/POS commands to printer IP</li>
+          <li style="margin-bottom:5px">Update frontend to call worker URL instead of local server</li>
+          <li style="margin-bottom:5px">Note: Worker must be on paid plan for TCP connections</li>
+        </ol>
+        
+        <p style="font-size:0.9rem;color:#666;margin-bottom:5px"><strong>QUICKEST START:</strong> Use Option A for testing. For production, consider Option B or hire developer to implement Option C.</p>
       </div>
     </section>
 
