@@ -45,13 +45,27 @@
       <pre id="csvPreview" style="max-height:200px;overflow:auto;border:1px solid #eee;padding:8px;margin-top:10px"></pre>
     </section>
     <section>
+      <h3>Printer Setup Guide</h3>
+      <div style="background:#f8f8f8;padding:15px;border-radius:8px;margin-bottom:15px">
+        <p style="margin-bottom:10px"><strong>Why print doesn't work directly?</strong></p>
+        <p style="font-size:0.9rem;color:#666;margin-bottom:10px">Browsers cannot directly connect to network printers (TCP/IP). Cloudflare Pages is a static hosting service - it only serves files, no backend code.</p>
+        <p style="font-size:0.9rem;color:#666"><strong>Solutions:</strong></p>
+        <ol style="font-size:0.9rem;color:#666;margin-left:20px;margin-top:5px">
+          <li style="margin-bottom:5px"><strong>Option A - Use server.js:</strong> Keep Node.js server running locally (server.js). Orders show in admin on same device.</li>
+          <li style="margin-bottom:5px"><strong>Option B - Print service:</strong> Use a print relay service like PrintNode (printnode.com) - browser prints to their service, relays to your printer.</li>
+          <li style="margin-bottom:5px"><strong>Option C - Local proxy:</strong> Run a small local server that receives print commands and sends to printer.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section>
       <h3>Printer Settings</h3>
       <div class="form-group">
-        <label>Food Printer IP: <input id="foodIp" type="text" /></label>
+        <label>Food Printer IP: <input id="foodIp" type="text" placeholder="192.168.x.x" /></label>
         <label>Port: <input id="foodPort" type="number" value="9100" style="width:80px"/></label>
       </div>
       <div class="form-group">
-        <label>Drink Printer IP: <input id="drinkIp" type="text" /></label>
+        <label>Drink Printer IP: <input id="drinkIp" type="text" placeholder="192.168.x.x" /></label>
         <label>Port: <input id="drinkPort" type="number" value="9100" style="width:80px"/></label>
       </div>
       <button id="saveConfig">Save Printer Config</button>
@@ -59,7 +73,7 @@
       <div style="margin-top:15px;padding-top:15px;border-top:1px solid #eee">
         <h4>Test Print</h4>
         <div class="form-group">
-          <label>Test Printer IP: <input id="testIp" type="text" /></label>
+          <label>Test Printer IP: <input id="testIp" type="text" placeholder="192.168.x.x" /></label>
           <label>Port: <input id="testPort" type="number" value="9100" style="width:80px"/></label>
         </div>
         <button id="testPrint" class="test-print-btn">Test Print</button>
