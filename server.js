@@ -65,15 +65,31 @@ function sendToPrinter(ip, port, data) {
     console.log(`Connecting to ${ip}:${port}...`);
     const client = new net.Socket();
     
+    client.setTimeout(5000);
+    
     client.connect(port, ip, () => {
       console.log('Connected, sending data...');
-      // Send as raw buffer
-      const buf = Buffer.from(data, 'binary');
+      
+      // Convert string to raw bytes (latin1 encoding for ESC/POS)
+      let buf;
+      if (Buffer.isBuffer(data)) {
+        buf = data;
+      } else {
+        buf = Buffer.from(data, 'latin1');
+      }
+      
+      console.log('Sending buffer length:', buf.length);
       client.write(buf);
-      console.log('Data sent, closing...');
+      console.log('Data sent, waiting for response...');
+      
+      // Wait a bit before closing to ensure data is sent
       setTimeout(() => {
         client.end();
-      }, 500);
+      }, 1000);
+    });
+    
+    client.on('data', (data) => {
+      console.log('Received data:', data.toString());
     });
     
     client.on('error', (err) => {
@@ -291,26 +307,9 @@ app.post('/api/admin/test-print', async (req, res) => {
 });
 
 function buildTestPrintData(){
-  // Try simpler ESC/POS commands
-  const ESC = '\x1B';
-  const GS = '\x1D';
-  const LF = '\x0A';
-  
-  let parts = [];
-  
-  // Initialize printer
-  parts.push(ESC + '@');
-  
-  // Just simple text first
-  parts.push('=== TEST PRINT ===' + LF);
-  parts.push('===================' + LF);
-  parts.push('' + LF);
-  parts.push('Hello Printer!' + LF);
-  parts.push('' + LF);
-  parts.push('' + LF);
-  parts.push('' + LF);
-  
-  return Buffer.from(parts.join(''), 'utf8');
+  // Just plain ASCII text with line feeds - no ESC/POS commands at all
+  const text = 'TEST PRINT\n==========\n\nHello World!\n\n\n\n\n';
+  return Buffer.from(text, 'ascii');
 }
 
 const PORT = process.env.PORT || 3000;
