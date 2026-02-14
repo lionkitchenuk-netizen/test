@@ -1,4 +1,4 @@
-// Admin functionality
+// Admin functionality - Static Version with localStorage
 
 // ==================== Internationalization ====================
 const I18N = {
@@ -24,7 +24,11 @@ const I18N = {
     uploadSuccess: 'Uploaded',
     uploadError: 'Upload error',
     noOrders: 'No orders',
-    printTest: 'Print Test'
+    printTest: 'Print Test',
+    clearData: 'Clear All Data',
+    clearConfirm: 'Are you sure? This will delete all orders and reset menu to defaults.',
+    dataManagement: 'Data Management',
+    resetToDefaults: 'Reset to Defaults'
   },
   'zh-HK': {
     csvManagement: 'CSV管理',
@@ -48,7 +52,11 @@ const I18N = {
     uploadSuccess: '已上載',
     uploadError: '上載錯誤',
     noOrders: '沒有訂單',
-    printTest: '打印測試'
+    printTest: '打印測試',
+    clearData: '清除所有數據',
+    clearConfirm: '確定嗎？呢個會刪除所有訂單同埋重置菜單。',
+    dataManagement: '數據管理',
+    resetToDefaults: '重置為默認'
   }
 };
 
@@ -59,34 +67,83 @@ function t(key) {
 }
 
 // ==================== CSV Functions ====================
-async function loadCSVPreview(name) {
-  const res = await fetch(`/api/admin/csv/${name}`);
-  if (!res.ok) {
-    document.getElementById('csvPreview').textContent = '';
-    return;
+function loadCSVPreview(type) {
+  const data = getData();
+  let rows = [];
+  let headers = [];
+  
+  if (type === 'menu') {
+    headers = ['id', 'name', 'price', 'category', 'has_attrs', 'printer'];
+    rows = data.items;
+  } else if (type === 'sets') {
+    headers = ['id', 'name', 'price', 'time_start', 'time_end', 'items'];
+    rows = data.sets;
+  } else if (type === 'attributes') {
+    headers = ['id', 'item_id', 'attr_name', 'options'];
+    rows = data.attrs;
   }
-  const txt = await res.text();
-  document.getElementById('csvPreview').textContent = txt;
+  
+  const csv = [headers.join(','), ...rows.map(r => headers.map(h => r[h] || '').join(','))].join('\n');
+  document.getElementById('csvPreview').textContent = csv;
+}
+
+function validateCSV(type, csvText) {
+  const lines = csvText.trim().split('\n');
+  if (lines.length < 2) return false;
+  
+  const headers = lines[0].split(',').map(h => h.trim());
+  
+  if (type === 'menu') {
+    const want = ['id', 'name', 'price', 'category', 'has_attrs'];
+    return want.every(c => headers.includes(c));
+  } else if (type === 'sets') {
+    const want = ['id', 'name', 'price', 'time_start', 'time_end', 'items'];
+    return want.every(c => headers.includes(c));
+  } else if (type === 'attributes') {
+    const want = ['id', 'item_id', 'attr_name', 'options'];
+    return want.every(c => headers.includes(c));
+  }
+  return false;
+}
+
+function importCSV(type, csvText) {
+  if (!validateCSV(type, csvText)) return false;
+  
+  const lines = csvText.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim());
+  const rows = lines.slice(1).map(line => {
+    const values = line.split(',');
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = values[i]?.trim() || '');
+    return obj;
+  });
+  
+  if (type === 'menu') {
+    saveData('MENU', rows);
+  } else if (type === 'sets') {
+    saveData('SETS', rows);
+  } else if (type === 'attributes') {
+    saveData('ATTRS', rows);
+  }
+  
+  return true;
 }
 
 // ==================== Order Functions ====================
-async function loadOrders() {
-  const res = await fetch('/api/orders');
-  const list = await res.json();
+function loadOrders() {
+  const orders = getOrders();
   const ul = document.getElementById('ordersList');
   ul.innerHTML = '';
   
-  if (list.length === 0) {
+  if (orders.length === 0) {
     ul.innerHTML = `<li class="empty">${t('noOrders')}</li>`;
     return;
   }
   
-  list.forEach(o => {
+  orders.forEach(o => {
     const li = document.createElement('li');
     const itemsHtml = (o.items || []).map(it => {
-      const pr = (o.printResults || []).filter(p => String(p.itemId) === String(it.id));
-      const prText = pr.length ? pr.map(p => `[${p.printerType}@${p.ip}:${p.port} ${p.ok ? 'OK' : 'ERR'}]`).join(', ') : '';
-      return `${it.name} x${it.qty} ${prText ? '(' + prText + ')' : ''}`;
+      return `${it.name} x${it.qty}`;
     }).join('<br>');
     li.innerHTML = `
       <div class="order-header">
@@ -97,34 +154,31 @@ async function loadOrders() {
       <div class="order-total">Total: $${o.total}</div>
       <button class="mark-paid-btn" data-id="${o.id}">${t('markPaid')}</button>
     `;
-    li.querySelector('button').addEventListener('click', async () => {
-      const res = await fetch(`/api/orders/${o.id}/pay`, { method: 'POST' });
-      if (res.ok) loadOrders();
+    li.querySelector('button').addEventListener('click', () => {
+      removeOrder(o.id);
+      loadOrders();
     });
     ul.appendChild(li);
   });
 }
 
 // ==================== Config Functions ====================
-async function loadConfig() {
-  const res = await fetch('/api/admin/config');
-  if (!res.ok) return;
-  const cfg = await res.json();
-  if (cfg && cfg.printer) {
-    const food = cfg.printer.food || {};
-    const drink = cfg.printer.drink || {};
+function loadConfig() {
+  const data = getData();
+  if (data.config && data.config.printer) {
+    const food = data.config.printer.food || {};
+    const drink = data.config.printer.drink || {};
     document.getElementById('foodIp').value = food.ip || '';
     document.getElementById('foodPort').value = food.port || 9100;
     document.getElementById('drinkIp').value = drink.ip || '';
     document.getElementById('drinkPort').value = drink.port || 9100;
-    // Also set test printer to food printer by default
     document.getElementById('testIp').value = food.ip || '192.168.18.50';
     document.getElementById('testPort').value = food.port || 9100;
   }
 }
 
-async function saveConfig() {
-  const cfg = {
+function saveConfig() {
+  const config = {
     printer: {
       food: {
         ip: document.getElementById('foodIp').value,
@@ -136,53 +190,42 @@ async function saveConfig() {
       }
     }
   };
-  const res = await fetch('/api/admin/config', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(cfg)
-  });
-  const j = await res.json();
+  saveData('CONFIG', config);
   const status = document.getElementById('saveStatus');
-  if (j.ok) {
-    status.textContent = t('saved');
-    setTimeout(() => status.textContent = '', 2000);
-  } else {
-    status.textContent = 'Error';
-  }
+  status.textContent = t('saved');
+  setTimeout(() => status.textContent = '', 2000);
 }
 
 // ==================== Test Print ====================
-async function testPrint() {
+function testPrint() {
   const ip = document.getElementById('testIp').value;
   const port = Number(document.getElementById('testPort').value) || 9100;
   const status = document.getElementById('testStatus');
   
-  status.textContent = 'Printing...';
+  // Note: Browsers cannot directly connect to TCP printers
+  // This is a simulation
+  status.textContent = 'Print simulation: IP ' + ip + ':' + port + ' - Browser cannot directly print to network printers';
   status.style.color = '#666';
   
-  try {
-    const res = await fetch('/api/admin/test-print', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ip, port })
-    });
-    const j = await res.json();
-    
-    if (j.ok) {
-      status.textContent = t('printSuccess');
-      status.style.color = 'green';
-    } else {
-      status.textContent = t('printError') + ': ' + (j.error || '');
-      status.style.color = 'red';
-    }
-  } catch (err) {
-    status.textContent = t('printError') + ': ' + err.message;
-    status.style.color = 'red';
+  console.log('Test print to:', ip, port);
+}
+
+// ==================== Data Management ====================
+function resetToDefaults() {
+  if (confirm(t('clearConfirm'))) {
+    localStorage.clear();
+    initData();
+    loadCSVPreview(document.getElementById('csvSelect').value);
+    loadOrders();
+    loadConfig();
+    alert('Data reset to defaults!');
   }
 }
 
 // ==================== Initialize ====================
 document.addEventListener('DOMContentLoaded', () => {
+  initData();
+  
   // CSV Management
   const sel = document.getElementById('csvSelect');
   loadCSVPreview(sel.value);
@@ -196,39 +239,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const f = document.getElementById('csvFile').files[0];
     if (!f) return alert(t('chooseFile'));
     const txt = await f.text();
-    // Validate before uploading
-    const v = await fetch(`/api/admin/validate/${sel.value}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: txt
-    });
-    const r = await v.json();
-    if (!r.ok) return alert(t('validationFailed'));
-    const res = await fetch(`/api/admin/csv/${sel.value}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: txt
-    });
-    const j = await res.json();
-    if (j.ok) {
-      alert(t('uploadSuccess'));
-      loadCSVPreview(sel.value);
-    } else {
-      alert(t('uploadError') + ': ' + (j.error || 'unknown'));
+    if (!importCSV(sel.value, txt)) {
+      return alert(t('validationFailed'));
     }
+    alert(t('uploadSuccess'));
+    loadCSVPreview(sel.value);
   });
 
   document.getElementById('validateCsv').addEventListener('click', async () => {
     const f = document.getElementById('csvFile').files[0];
     if (!f) return alert(t('chooseFile'));
     const txt = await f.text();
-    const v = await fetch(`/api/admin/validate/${sel.value}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: txt
-    });
-    const r = await v.json();
-    if (r.ok) alert(t('validationPassed'));
+    if (validateCSV(sel.value, txt)) alert(t('validationPassed'));
     else alert(t('validationFailed'));
   });
 
@@ -242,4 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Test print
   document.getElementById('testPrint').addEventListener('click', testPrint);
+  
+  // Data management
+  document.getElementById('resetDefaults').addEventListener('click', resetToDefaults);
 });
