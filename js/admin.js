@@ -192,15 +192,39 @@ function saveConfig() {
   setTimeout(() => status.textContent = '', 2000);
 }
 
-function testPrint() {
+async function testPrint() {
   const ip = document.getElementById('testIp').value;
   const port = Number(document.getElementById('testPort').value) || 9100;
   const status = document.getElementById('testStatus');
   
-  status.textContent = 'Print simulation: IP ' + ip + ':' + port + ' - Browser cannot directly print to network printers';
+  if (!ip) {
+    status.textContent = 'Please enter printer IP';
+    status.style.color = 'red';
+    return;
+  }
+  
+  status.textContent = 'Sending print job...';
   status.style.color = '#666';
   
-  console.log('Test print to:', ip, port);
+  try {
+    const response = await fetch('/api/admin/test-print', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ip, port })
+    });
+    
+    if (response.ok) {
+      status.textContent = 'Print sent successfully!';
+      status.style.color = 'green';
+    } else {
+      const err = await response.json();
+      status.textContent = 'Print error: ' + err.error;
+      status.style.color = 'red';
+    }
+  } catch (e) {
+    status.textContent = 'Print error: ' + e.message;
+    status.style.color = 'red';
+  }
 }
 
 function resetToDefaults() {

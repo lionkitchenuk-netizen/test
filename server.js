@@ -62,13 +62,35 @@ app.get('/api/menu', (req, res) => {
 
 function sendToPrinter(ip, port, data) {
   return new Promise((resolve, reject) => {
-    const client = net.connect(port, ip, () => {
-      client.write(data);
-      client.end();
+    console.log(`Connecting to ${ip}:${port}...`);
+    const client = new net.Socket();
+    
+    client.connect(port, ip, () => {
+      console.log('Connected, sending data...');
+      // Send as raw buffer
+      const buf = Buffer.from(data, 'binary');
+      client.write(buf);
+      console.log('Data sent, closing...');
+      setTimeout(() => {
+        client.end();
+      }, 500);
     });
-    client.on('error', err => reject(err));
-    client.on('end', () => resolve());
-    client.on('close', () => resolve());
+    
+    client.on('error', (err) => {
+      console.error('Connection error:', err.message);
+      reject(err);
+    });
+    
+    client.on('close', () => {
+      console.log('Connection closed');
+      resolve();
+    });
+    
+    client.on('timeout', () => {
+      console.error('Connection timeout');
+      client.destroy();
+      reject(new Error('Connection timeout'));
+    });
   });
 }
 
