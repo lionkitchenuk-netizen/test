@@ -1,12 +1,12 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { parse } = require('csv-parse/sync');
+const { parse } = require('csv-parse');
 const net = require('net');
 
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(__dirname));
 
 // In-memory orders store (ephemeral)
 const ORDERS = [];
