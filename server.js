@@ -254,5 +254,39 @@ app.post('/api/admin/config', (req, res) => {
   }catch(err){ res.status(500).json({ error: err.message }); }
 });
 
+// Admin: test print
+app.post('/api/admin/test-print', async (req, res) => {
+  try{
+    const { ip, port } = req.body;
+    if (!ip) return res.status(400).json({ error: 'missing ip' });
+    
+    const testData = buildTestPrintData();
+    await sendToPrinter(ip, port || 9100, testData);
+    res.json({ ok: true });
+  }catch(err){ 
+    res.status(500).json({ error: err.message }); 
+  }
+});
+
+function buildTestPrintData(){
+  const ESC = '\x1B';
+  const GS = '\x1D';
+  let parts = [];
+  
+  parts.push(ESC + '@'); // initialize
+  parts.push(ESC + 'a' + '\x01'); // center
+  parts.push(ESC + 'E' + '\x01'); // bold on
+  parts.push('TEST PRINT\n');
+  parts.push(ESC + 'E' + '\x00'); // bold off
+  parts.push(new Date().toLocaleString() + '\n');
+  parts.push('-------------------------\n');
+  parts.push(ESC + 'a' + '\x00'); // left align
+  parts.push('Printer connection OK!\n');
+  parts.push('\n\n');
+  parts.push(GS + 'V' + '\x01'); // full cut
+  
+  return Buffer.from(parts.join(''), 'binary');
+}
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server listening on ${PORT}`));

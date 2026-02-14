@@ -3,12 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <title>Admin - POS</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body>
   <div class="admin">
     <h1>Admin</h1>
+    
     <section>
       <h3>CSV Management</h3>
       <div>
@@ -27,17 +28,28 @@
 
     <section>
       <h3>Printer Settings</h3>
-      <div>
-        <label>Food Printer IP: <input id="foodIp" type="text" /></label>
-        <label>Port: <input id="foodPort" type="number" value="9100" style="width:80px"/></label>
-      </div>
-      <div>
-        <label>Drink Printer IP: <input id="drinkIp" type="text" /></label>
-        <label>Port: <input id="drinkPort" type="number" value="9100" style="width:80px"/></label>
+      <div class="printer-config">
+        <div class="form-group">
+          <label>Food Printer IP: <input id="foodIp" type="text" /></label>
+          <label>Port: <input id="foodPort" type="number" value="9100" style="width:80px"/></label>
+        </div>
+        <div class="form-group">
+          <label>Drink Printer IP: <input id="drinkIp" type="text" /></label>
+          <label>Port: <input id="drinkPort" type="number" value="9100" style="width:80px"/></label>
+        </div>
       </div>
       <div style="margin-top:8px">
         <button id="saveConfig">Save Printer Config</button>
         <span id="saveStatus" style="margin-left:8px;color:green"></span>
+      </div>
+      <div class="printer-test">
+        <h4>Test Print</h4>
+        <div class="form-group">
+          <label>Test Printer IP: <input id="testIp" type="text" /></label>
+          <label>Port: <input id="testPort" type="number" value="9100" style="width:80px"/></label>
+        </div>
+        <button id="testPrint" class="test-print-btn">Test Print</button>
+        <span id="testStatus" style="margin-left:8px"></span>
       </div>
     </section>
 
