@@ -47,6 +47,29 @@
     <section>
       <h3>Printer Setup Guide</h3>
       <div style="background:#f8f8f8;padding:15px;border-radius:8px;margin-bottom:15px">
+        <p style="margin-bottom:10px"><strong>⚡ Quick Info: Which Mode Works Where?</strong></p>
+        <table style="width:100%;font-size:0.85rem;margin-bottom:15px;">
+          <tr style="background:#e3f2fd;">
+            <th style="padding:8px;text-align:left">Deployment</th>
+            <th style="padding:8px;text-align:left">Port Type</th>
+            <th style="padding:8px;text-align:left">Status</th>
+          </tr>
+          <tr>
+            <td style="padding:8px;border-bottom:1px solid #ddd">Local <code>node server.js</code></td>
+            <td style="padding:8px;border-bottom:1px solid #ddd">TCP (9100) ✅ &amp; EPOS (8043) ✅</td>
+            <td style="padding:8px;border-bottom:1px solid #ddd">Both work</td>
+          </tr>
+          <tr style="background:#fff3e0;">
+            <td style="padding:8px;border-bottom:1px solid #ddd">Cloudflare Pages + Worker</td>
+            <td style="padding:8px;border-bottom:1px solid #ddd">TCP (9100) ❌ / EPOS (8043) ✅</td>
+            <td style="padding:8px;border-bottom:1px solid #ddd">EPOS only</td>
+          </tr>
+        </table>
+        <p style="font-size:0.85rem;color:#d84315;margin-bottom:15px">
+          <strong>If deployed on Cloudflare:</strong> Select <strong>HTTPS/ePOS (8043)</strong> for test print to work!<br>
+          (TCP requires Node.js backend - use local server for TCP testing)
+        </p>
+        
         <p style="margin-bottom:10px"><strong>Why print doesn't work directly?</strong></p>
         <p style="font-size:0.9rem;color:#666;margin-bottom:15px">Browsers cannot directly connect to network printers (TCP/IP). Cloudflare Pages is a static hosting service - it only serves files, no backend code.</p>
         
@@ -61,13 +84,26 @@
           <li style="margin-bottom:5px">Keep terminal open - printing will work!</li>
         </ol>
         
-        <p style="font-size:0.9rem;color:#666;margin-bottom:10px"><strong>OPTION B - Use PrintNode Service (For production)</strong></p>
+        <p style="font-size:0.9rem;color:#666;margin-bottom:10px"><strong>OPTION B - Use Cloudflare Worker (For cloud deployment)</strong></p>
+        <ol style="font-size:0.85rem;color:#666;margin-left:20px;margin-bottom:15px">
+          <li style="margin-bottom:5px">See <strong>CLOUDFLARE_WORKER_SETUP.md</strong> in project for detailed steps</li>
+          <li style="margin-bottom:5px">Create Cloudflare Worker from <strong>cloudflare-worker.js</strong> file</li>
+          <li style="margin-bottom:5px">Configure printer to use <strong>HTTPS/ePOS (8043)</strong> mode only</li>
+          <li style="margin-bottom:5px">Test print should work with EPOS-compatible printers</li>
+        </ol>
+        
+        <p style="font-size:0.9rem;color:#666;margin-bottom:10px"><strong>OPTION C - Use PrintNode Service (For production)</strong></p>
         <ol style="font-size:0.85rem;color:#666;margin-left:20px;margin-bottom:15px">
           <li style="margin-bottom:5px">Go to <a href="https://printnode.com" target="_blank">printnode.com</a> and create account</li>
           <li style="margin-bottom:5px">Download and install PrintNode Client on a Windows PC connected to printer</li>
           <li style="margin-bottom:5px">Get your Account ID from PrintNode dashboard</li>
           <li style="margin-bottom:5px">Note the Printer ID from PrintNode</li>
           <li style="margin-bottom:5px">You would need to modify code to use PrintNode API - requires developer work</li>
+        </ol>
+        
+        <p style="font-size:0.9rem;color:#666;margin-bottom:5px"><strong>QUICKEST START:</strong> Use Option A for testing. For production, consider Option B (Cloudflare Worker + EPOS printers) or hire developer to implement Option C.</p>
+      </div>
+    </section>
         </ol>
         
         <p style="font-size:0.9rem;color:#666;margin-bottom:10px"><strong>OPTION C - Use Cloudflare Workers (Advanced)</strong></p>

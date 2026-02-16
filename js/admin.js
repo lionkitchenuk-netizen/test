@@ -245,13 +245,28 @@ async function testPrint() {
       status.textContent = 'Print sent successfully!';
       status.style.color = 'green';
     } else {
-      const err = await response.json();
-      status.textContent = 'Print error: ' + err.error;
+      // Try to parse as JSON, fallback to status code
+      let errorMsg = `HTTP ${response.status}`;
+      try {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const err = await response.json();
+          errorMsg = err.error || err.message || errorMsg;
+        } else {
+          // Response is not JSON, show status text
+          errorMsg = response.statusText || `HTTP ${response.status}`;
+        }
+      } catch (parseErr) {
+        // JSON parsing failed, use status code
+        console.log('Could not parse response:', parseErr);
+      }
+      status.textContent = 'Print error: ' + errorMsg;
       status.style.color = 'red';
     }
   } catch (e) {
     status.textContent = 'Print error: ' + e.message;
     status.style.color = 'red';
+    console.error('Test print error:', e);
   }
 }
 
