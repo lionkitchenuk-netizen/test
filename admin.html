@@ -87,10 +87,22 @@
       <h3>Printer Settings</h3>
       <div class="form-group">
         <label>Food Printer IP: <input id="foodIp" type="text" placeholder="192.168.x.x" /></label>
+        <label>Port Type: 
+          <select id="foodPortType" style="width:120px">
+            <option value="tcp">TCP (9100)</option>
+            <option value="https">HTTPS/ePOS (8043)</option>
+          </select>
+        </label>
         <label>Port: <input id="foodPort" type="number" value="9100" style="width:80px"/></label>
       </div>
       <div class="form-group">
         <label>Drink Printer IP: <input id="drinkIp" type="text" placeholder="192.168.x.x" /></label>
+        <label>Port Type: 
+          <select id="drinkPortType" style="width:120px">
+            <option value="tcp">TCP (9100)</option>
+            <option value="https">HTTPS/ePOS (8043)</option>
+          </select>
+        </label>
         <label>Port: <input id="drinkPort" type="number" value="9100" style="width:80px"/></label>
       </div>
       <button id="saveConfig">Save Printer Config</button>
@@ -99,11 +111,18 @@
         <h4>Test Print (via Server)</h4>
         <div class="form-group">
           <label>Test Printer IP: <input id="testIp" type="text" placeholder="192.168.x.x" /></label>
+          <label>Port Type: 
+            <select id="testPortType" style="width:120px">
+              <option value="tcp">TCP (9100)</option>
+              <option value="https">HTTPS/ePOS (8043)</option>
+            </select>
+          </label>
           <label>Port: <input id="testPort" type="number" value="9100" style="width:80px"/></label>
         </div>
         <button id="testPrint" class="test-print-btn">Test Print (Server)</button>
         <span id="testStatus" style="margin-left:8px"></span>
       </div>
+    </section>
       <div style="margin-top:15px;padding-top:15px;border-top:1px solid #eee">
         <h4>Test Print (via Epson ePOS SDK)</h4>
         <div class="form-group">

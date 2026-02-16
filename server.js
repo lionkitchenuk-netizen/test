@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { parse } = require('csv-parse');
 const net = require('net');
+const https = require('https');
 
 const app = express();
 app.use(express.json());
@@ -60,9 +61,17 @@ app.get('/api/menu', (req, res) => {
   }
 });
 
-function sendToPrinter(ip, port, data) {
+function sendToPrinter(ip, port, data, isEpos = false) {
+  if (isEpos || port === 8043) {
+    return sendToPrinterHTTPS(ip, port, data);
+  } else {
+    return sendToPrinterTCP(ip, port, data);
+  }
+}
+
+function sendToPrinterTCP(ip, port, data) {
   return new Promise((resolve, reject) => {
-    console.log(`Connecting to ${ip}:${port}...`);
+    console.log(`Connecting to ${ip}:${port} via TCP...`);
     const client = new net.Socket();
     
     client.setTimeout(5000);
@@ -110,6 +119,56 @@ function sendToPrinter(ip, port, data) {
   });
 }
 
+function sendToPrinterHTTPS(ip, port, data) {
+  return new Promise((resolve, reject) => {
+    console.log(`Connecting to ${ip}:${port} via HTTPS (EPOS SDK)...`);
+    
+    const url = `https://${ip}:${port}/cgi-bin/epos/service.cgi?devid=printer1&timeout=10000`;
+    
+    const soapBody = data;
+    
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/xml; charset=utf-8',
+        'Content-Length': Buffer.byteLength(soapBody),
+        'SOAPAction': '""'
+      },
+      rejectUnauthorized: false // Allow self-signed certs
+    };
+    
+    const req = https.request(url, options, (res) => {
+      let responseData = '';
+      
+      res.on('data', (chunk) => {
+        responseData += chunk;
+      });
+      
+      res.on('end', () => {
+        console.log('HTTPS Response received:', responseData.substring(0, 200));
+        if (res.statusCode === 200) {
+          resolve(responseData);
+        } else {
+          reject(new Error(`HTTP ${res.statusCode}: ${responseData}`));
+        }
+      });
+    });
+    
+    req.on('error', (err) => {
+      console.error('HTTPS error:', err.message);
+      reject(err);
+    });
+    
+    req.setTimeout(5000, () => {
+      req.destroy();
+      reject(new Error('HTTPS timeout'));
+    });
+    
+    req.write(soapBody);
+    req.end();
+  });
+}
+
 function buildEscPosData(order) {
   // Basic ESC/POS formatting. This creates a Buffer with some commands.
   // Init, center header, bold table line, items left-aligned, cut.
@@ -142,6 +201,25 @@ function buildEscPosData(order) {
   parts.push(GS + 'V' + '\x01'); // full cut
 
   return Buffer.from(parts.join(''), 'binary');
+}
+
+function buildEposXmlData(title = 'TEST PRINT') {
+  // Build XML for Epson ePOS SDK (port 8043)
+  const xml = `<?xml version="1.0" encoding="utf-8"?>
+<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+<s:Body>
+<epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
+<text align="center"><![CDATA[${title}]]></text>
+<feed line="1"/>
+<text>==========================</text>
+<feed line="1"/>
+<text>Hello World!</text>
+<feed line="3"/>
+<cut type="feed"/>
+</epos-print>
+</s:Body>
+</s:Envelope>`;
+  return xml;
 }
 
 function buildEscPosForItem(order, item){
@@ -295,12 +373,22 @@ app.post('/api/admin/config', (req, res) => {
 // Admin: test print
 app.post('/api/admin/test-print', async (req, res) => {
   try{
-    const { ip, port } = req.body;
+    const { ip, port, useEpos } = req.body;
     if (!ip) return res.status(400).json({ error: 'missing ip' });
     
-    const testData = buildTestPrintData();
-    await sendToPrinter(ip, port || 9100, testData);
-    res.json({ ok: true });
+    const actualPort = port || 9100;
+    let testData;
+    
+    if (useEpos || actualPort === 8043) {
+      // Use EPOS SDK XML format
+      testData = buildEposXmlData('TEST PRINT - EPOS SDK');
+    } else {
+      // Use raw ESC/POS
+      testData = buildTestPrintData();
+    }
+    
+    await sendToPrinter(ip, actualPort, testData, useEpos || actualPort === 8043);
+    res.json({ ok: true, message: 'Print sent successfully' });
   }catch(err){ 
     res.status(500).json({ error: err.message }); 
   }

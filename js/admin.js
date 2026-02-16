@@ -184,10 +184,13 @@ function loadConfig() {
     const drink = data.config.printer.drink || {};
     document.getElementById('foodIp').value = food.ip || '';
     document.getElementById('foodPort').value = food.port || 9100;
+    document.getElementById('foodPortType').value = food.portType || 'tcp';
     document.getElementById('drinkIp').value = drink.ip || '';
     document.getElementById('drinkPort').value = drink.port || 9100;
+    document.getElementById('drinkPortType').value = drink.portType || 'tcp';
     document.getElementById('testIp').value = food.ip || '192.168.18.50';
     document.getElementById('testPort').value = food.port || 9100;
+    document.getElementById('testPortType').value = food.portType || 'tcp';
   }
 }
 
@@ -196,11 +199,13 @@ function saveConfig() {
     printer: {
       food: {
         ip: document.getElementById('foodIp').value,
-        port: Number(document.getElementById('foodPort').value)
+        port: Number(document.getElementById('foodPort').value),
+        portType: document.getElementById('foodPortType').value
       },
       drink: {
         ip: document.getElementById('drinkIp').value,
-        port: Number(document.getElementById('drinkPort').value)
+        port: Number(document.getElementById('drinkPort').value),
+        portType: document.getElementById('drinkPortType').value
       }
     }
   };
@@ -213,6 +218,7 @@ function saveConfig() {
 async function testPrint() {
   const ip = document.getElementById('testIp').value;
   const port = Number(document.getElementById('testPort').value) || 9100;
+  const portType = document.getElementById('testPortType').value;
   const status = document.getElementById('testStatus');
   
   if (!ip) {
@@ -228,7 +234,11 @@ async function testPrint() {
     const response = await fetch('/api/admin/test-print', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ip, port })
+      body: JSON.stringify({ 
+        ip, 
+        port,
+        useEpos: portType === 'https'
+      })
     });
     
     if (response.ok) {
@@ -295,4 +305,15 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('testPrint').addEventListener('click', testPrint);
   
   document.getElementById('resetDefaults').addEventListener('click', resetToDefaults);
+
+  // Port type change handlers - update default port numbers
+  ['food', 'drink', 'test'].forEach(prefix => {
+    const portTypeSelect = document.getElementById(prefix + 'PortType');
+    const portInput = document.getElementById(prefix + 'Port');
+    if (portTypeSelect) {
+      portTypeSelect.addEventListener('change', (e) => {
+        portInput.value = e.target.value === 'https' ? 8043 : 9100;
+      });
+    }
+  });
 });
