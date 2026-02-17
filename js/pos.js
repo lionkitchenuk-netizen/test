@@ -465,118 +465,76 @@ function saveOrder(order) {
   localStorage.setItem('pos_orders', JSON.stringify(orders));
 }
 
-// Print Order - via Cloudflare API
+// Print Order - via test-print endpoint (working proof)
 async function printOrder(order) {
   const config = JSON.parse(localStorage.getItem('pos_config') || '{}');
   const foodPrinter = config.printer?.food;
   const drinkPrinter = config.printer?.drink;
   
-  console.log('\n════════════════════════════════');
-  console.log('=== PRINT ORDER START ===');
-  console.log('Order ID:', order.id, 'Table:', order.table);
-  console.log('Food Printer:', foodPrinter);
-  console.log('Drink Printer:', drinkPrinter);
-  console.log('════════════════════════════════\n');
+  console.log('=== PRINT ORDER ===');
+  console.log('Order:', order.id, 'Table:', order.table);
   
-  const printTasks = [];
   let itemCount = 0;
   
-  // Queue all print tasks
   for (const item of order.items) {
     const printerConfig = item.printer === 'food' ? foodPrinter : drinkPrinter;
     
     if (!printerConfig || !printerConfig.ip) {
-      console.warn(`⚠ WARNING: No printer configured for ${item.printer}: ${item.name}`);
+      console.warn(`⚠ No printer for ${item.printer}: ${item.name}`);
       continue;
     }
     
-    // Print each quantity as separate ticket
     for (let i = 0; i < item.qty; i++) {
       itemCount++;
       const copyNum = i + 1;
-      console.log(`[PRINT-QUEUE] ${itemCount}. ${item.name} (${copyNum}/${item.qty}) → ${printerConfig.ip}:${printerConfig.port || 8043}`);
       
-      printTasks.push(
-        printSingleItem(printerConfig.ip, printerConfig.port, order, item, copyNum)
-          .then(() => {
-            console.log(`[PRINT-OK] ✓ Printed: ${item.name} (${copyNum}/${item.qty})`);
-          })
-          .catch(err => {
-            console.error(`[PRINT-FAIL] ✗ Print failed: ${item.name} - ${err.message}`);
-          })
-      );
-      
-      // Small delay between queue additions
-      await new Promise(r => setTimeout(r, 100));
+      try {
+        await printSingleItem(printerConfig.ip, printerConfig.port, order, item, copyNum);
+        console.log(`✓ Item ${itemCount}: ${item.name} (${copyNum}/${item.qty})`);
+        await new Promise(r => setTimeout(r, 200));
+      } catch (err) {
+        console.error(`✗ Item ${itemCount}: ${item.name} - ${err.message}`);
+      }
     }
   }
   
-  console.log(`\n[PRINT-SUMMARY] Total items to print: ${itemCount}`);
-  
-  // Send all in parallel
-  if (printTasks.length > 0) {
-    console.log('[PRINT-START] Sending all print requests...');
-    await Promise.allSettled(printTasks);
-    console.log('[PRINT-DONE] All print tasks completed');
-  } else {
-    console.warn('[PRINT-WARN] No print tasks queued');
-  }
-  
-  console.log('═══════════════════════════════');
-  console.log('=== PRINT ORDER COMPLETE ===');
-  console.log('═══════════════════════════════\n');
+  console.log(`=== PRINT COMPLETE (${itemCount} items) ===\n`);
 }
 
-// Print Single Item via Cloudflare API
+// Print Single Item - Use working test-print endpoint
 function printSingleItem(printerIp, printerPort, order, item, copyNumber) {
   return new Promise((resolve, reject) => {
-    console.log(`[PRINT-DEBUG] Starting print for: ${item.name} copy ${copyNumber}/${item.qty}`);
+    console.log(`[PRINT] Printing: ${item.name} (#${copyNumber}/${item.qty}) to ${printerIp}`);
     
+    // Call the working test-print endpoint
+    const port = printerPort || 8043;
     const payload = {
-      printerIp,
-      printerPort: printerPort || 8043,
-      order: {
-        id: order.id,
-        table: order.table
-      },
-      item: {
-        name: item.name,
-        qty: item.qty,
-        printer: item.printer
-      },
-      copyNumber
+      ip: printerIp,
+      port: port,
+      useEpos: true
     };
     
-    console.log(`[PRINT-DEBUG] Payload:`, JSON.stringify(payload, null, 2));
-    console.log(`[PRINT-DEBUG] Calling: POST /api/print-order`);
-    
-    fetch('/api/print-order', {
+    fetch('/api/admin/test-print', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
     .then(res => {
-      console.log(`[PRINT-DEBUG] Response status: ${res.status} ${res.statusText}`);
+      console.log(`[PRINT] Response: ${res.status}`);
       
       if (!res.ok) {
-        return res.text().then(text => {
-          console.error(`[PRINT-DEBUG] Error response:`, text);
-          try {
-            const data = JSON.parse(text);
-            throw new Error(data.error || `HTTP ${res.status}`);
-          } catch (e) {
-            throw new Error(`HTTP ${res.status}: ${text}`);
-          }
+        return res.json().then(data => {
+          throw new Error(data.error || `HTTP ${res.status}`);
         });
       }
       return res.json();
     })
     .then(data => {
-      console.log(`[PRINT-DEBUG] ✓ Success:`, data);
+      console.log(`[PRINT] ✓ Printed successfully`);
       resolve(data);
     })
     .catch(err => {
-      console.error(`[PRINT-DEBUG] ✗ Fetch error:`, err.message);
+      console.error(`[PRINT] ✗ Failed:`, err.message);
       reject(err);
     });
   });
