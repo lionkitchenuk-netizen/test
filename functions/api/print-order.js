@@ -1,5 +1,5 @@
 // Cloudflare Pages Function: /api/print-order
-// Exactly like test-print but for order items
+// Sends order printing using the exact same method as test-print
 
 export async function onRequestPost(context) {
   try {
@@ -25,8 +25,9 @@ export async function onRequestPost(context) {
 
 async function sendOrderPrint(ip, port, order, item, copyNumber) {
   try {
-    const title = `TABLE ${order.table} - ${item.name} (${copyNumber}/${item.qty})`;
-    const soapBody = buildOrderXml(title, order.id);
+    // Build exactly the same XML format as test-print
+    const title = `${item.name} - Table ${order.table}`;
+    const soapBody = buildOrderXml(title);
     const printerUrl = `https://${ip}:${port}/cgi-bin/epos/service.cgi?timeout=10000`;
     
     const response = await fetch(printerUrl, {
@@ -53,8 +54,9 @@ async function sendOrderPrint(ip, port, order, item, copyNumber) {
     } else {
       return new Response(
         JSON.stringify({ 
-          error: `Printer returned: ${response.statusText}`,
-          details: responseText.substring(0, 200)
+          error: `Printer error: ${response.statusText}`,
+          status: response.status,
+          details: responseText.substring(0, 300)
         }),
         { status: response.status, headers: { 'Content-Type': 'application/json' } }
       );
@@ -63,25 +65,24 @@ async function sendOrderPrint(ip, port, order, item, copyNumber) {
     return new Response(
       JSON.stringify({ 
         error: err.message,
-        hint: 'Network or printer connection issue'
+        hint: 'Connection failed'
       }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
 }
 
-function buildOrderXml(title, orderId) {
+// Exact same format as test-print uses
+function buildOrderXml(title) {
   return `<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
 <s:Body>
 <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
 <text align="center"><![CDATA[${title}]]></text>
 <feed line="1"/>
-<text><![CDATA[Order: ${orderId}]]></text>
-<feed line="1"/>
 <text>==========================</text>
 <feed line="1"/>
-<text><![CDATA[Time: ${new Date().toLocaleTimeString()}]]></text>
+<text>Order Ticket</text>
 <feed line="3"/>
 <cut type="feed"/>
 </epos-print>
