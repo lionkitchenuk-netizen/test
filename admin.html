@@ -161,8 +161,16 @@
     </section>
       <div style="margin-top:15px;padding-top:15px;border-top:1px solid #eee">
         <h4>Test Print (via Epson ePOS SDK)</h4>
+        <div style="background:#e3f2fd;padding:10px;border-radius:4px;margin-bottom:10px;font-size:0.85rem">
+          <strong>Requirements:</strong>
+          <ul style="margin:5px 0 0 20px;padding:0">
+            <li>Printer must have <strong>ePOS SDK enabled</strong> (port 8008)</li>
+            <li>Browser must be on <strong>same network</strong> as printer</li>
+            <li>Check printer's web interface to enable ePOS</li>
+          </ul>
+        </div>
         <div class="form-group">
-          <label>Printer IP: <input id="eposIp" type="text" placeholder="192.168.x.x" value="192.168.18.50" /></label>
+          <label>Printer IP: <input id="eposIp" type="text" placeholder="192.168.x.x" /></label>
         </div>
         <button id="testPrintEpos" style="background:#2196F3;">Test Print (ePOS SDK)</button>
         <span id="eposStatus" style="margin-left:8px"></span>
@@ -181,10 +189,29 @@
   <script src="js/admin.js"></script>
   <script src="epos-2.27.0.js"></script>
   <script>
+    // Load saved ePOS IP on page load
+    window.addEventListener('DOMContentLoaded', function() {
+      const config = JSON.parse(localStorage.getItem('printerConfig') || '{}');
+      const savedIp = config.eposTestIp || '192.168.1.165';
+      document.getElementById('eposIp').value = savedIp;
+    });
+    
+    // Save ePOS IP when changed
+    document.getElementById('eposIp').addEventListener('blur', function() {
+      const config = JSON.parse(localStorage.getItem('printerConfig') || '{}');
+      config.eposTestIp = this.value;
+      localStorage.setItem('printerConfig', JSON.stringify(config));
+    });
+    
     // Direct browser-to-printer using Epson ePOS SDK
     function testPrintEpos() {
       const ip = document.getElementById('eposIp').value;
       const status = document.getElementById('eposStatus');
+      
+      // Save IP
+      const config = JSON.parse(localStorage.getItem('printerConfig') || '{}');
+      config.eposTestIp = ip;
+      localStorage.setItem('printerConfig', JSON.stringify(config));
       
       if (!ip) {
         status.textContent = 'Please enter printer IP';
@@ -192,14 +219,14 @@
         return;
       }
       
-      status.textContent = 'Connecting to printer...';
+      status.textContent = 'Connecting to ' + ip + ':8008...';
       status.style.color = '#666';
       
       try {
         // Create ePOS Device object
         var eposDevice = new epson.ePOSDevice();
         
-        // Connect to printer
+        // Connect to printer (port 8008 is ePOS SDK WebSocket)
         eposDevice.connect(ip, 8008, function(data) {
           if (data === 'OK' || data === 'SSL_CONNECT_OK') {
             status.textContent = 'Connected! Creating print job...';
@@ -253,6 +280,13 @@
           } else {
             status.textContent = 'Connection failed: ' + data;
             status.style.color = 'red';
+            
+            // Show helpful error message
+            if (data.includes('TIMEOUT')) {
+              setTimeout(function() {
+                status.textContent = 'Timeout - Check: 1) Printer is on, 2) ePOS SDK enabled on port 8008, 3) Same network';
+              }, 1000);
+            }
           }
         });
       } catch (e) {
