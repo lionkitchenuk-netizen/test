@@ -1,7 +1,28 @@
 // Cloudflare Pages Function: /api/print-order
 // Handles order printing by sending ePOS SOAP commands via HTTPS
 
-export async function onRequestPost(context) {
+export async function onRequest(context) {
+  // Handle OPTIONS for CORS
+  if (context.request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
+  }
+  
+  // Only handle POST
+  if (context.request.method !== 'POST') {
+    return jsonResponse({ error: 'Method not allowed' }, 405);
+  }
+  
+  return handlePrintRequest(context);
+}
+
+async function handlePrintRequest(context) {
   try {
     const data = await context.request.json();
     const { printerIp, printerPort, order, item, copyNumber } = data;
@@ -76,67 +97,37 @@ export async function onRequestPost(context) {
 
 /**
  * Build ePOS SOAP XML for order item printing
+ * Uses same format as working test-print
  */
 function buildOrderPrintXml(order, item, copyNumber) {
   const timestamp = new Date().toLocaleTimeString();
-  const table = escapeXml(order.table?.toString() || '');
-  const orderId = escapeXml(order.id || '');
-  const itemName = escapeXml(item.name || '');
-  const printerType = escapeXml(item.printer?.toUpperCase() || 'KITCHEN');
+  const table = order.table?.toString() || '?';
+  const orderId = order.id || '?';
+  const itemName = item.name || 'ITEM';
+  const printerType = item.printer?.toUpperCase() || 'KITCHEN';
   const qty = item.qty || 1;
   const copy = copyNumber || 1;
 
-  const receiptXml = `<?xml version="1.0" encoding="UTF-8"?>
-<epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-  <text align="center" font="a" smooth="true">TABLE ${table}</text>
-  <feed line="2"/>
-  <text align="center" font="a">Order: ${orderId}</text>
-  <text align="center" font="a">Time: ${timestamp}</text>
-  <feed line="1"/>
-  <text align="center" font="b">================================</text>
-  <feed line="2"/>
-  <text align="center" font="b" size="2x2">${itemName}</text>
-  <feed line="2"/>
-  <text align="center" font="a">Copy ${copy} of ${qty}</text>
-  <text align="center" font="a">${printerType} PRINTER</text>
-  <feed line="3"/>
-  <cut type="feed"/>
-</epos-print>`;
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
+  return `<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
-  <s:Body>
-    <Action_PrintXMLString xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-      <devid>local_printer</devid>
-      <timeout>30000</timeout>
-      <xmlstring>${escapeXmlForSoap(receiptXml)}</xmlstring>
-    </Action_PrintXMLString>
-  </s:Body>
+<s:Body>
+<epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
+<text align="center"><![CDATA[TABLE ${table}]]></text>
+<feed line="1"/>
+<text align="center"><![CDATA[Order: ${orderId}]]></text>
+<text align="center"><![CDATA[Time: ${timestamp}]]></text>
+<feed line="1"/>
+<text align="center"><![CDATA[================================]]></text>
+<feed line="1"/>
+<text align="center" size="2x2"><![CDATA[${itemName}]]></text>
+<feed line="1"/>
+<text align="center"><![CDATA[Copy ${copy} of ${qty}]]></text>
+<text align="center"><![CDATA[${printerType} PRINTER]]></text>
+<feed line="3"/>
+<cut type="feed"/>
+</epos-print>
+</s:Body>
 </s:Envelope>`;
-}
-
-/**
- * Escape XML special characters
- */
-function escapeXml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
-/**
- * Escape XML for SOAP embedding
- */
-function escapeXmlForSoap(xml) {
-  return String(xml)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 /**
