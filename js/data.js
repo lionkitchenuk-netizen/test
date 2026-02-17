@@ -16,8 +16,8 @@ const DEFAULT_DATA = {
   ],
   config: {
     printer: {
-      food: { ip: "192.168.18.50", port: 9100 },
-      drink: { ip: "192.168.18.50", port: 9100 }
+      food: { ip: "192.168.1.165", port: 8043, portType: "https" },
+      drink: { ip: "192.168.1.165", port: 8043, portType: "https" }
     }
   }
 };

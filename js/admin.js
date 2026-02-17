@@ -209,7 +209,15 @@ function saveConfig() {
       }
     }
   };
+  
+  // Save via data.js function
   saveData('CONFIG', config);
+  
+  // Also save directly to ensure it's accessible
+  localStorage.setItem('pos_config', JSON.stringify(config));
+  
+  console.log('Config saved:', config);
+  
   const status = document.getElementById('saveStatus');
   status.textContent = t('saved');
   setTimeout(() => status.textContent = '', 2000);
