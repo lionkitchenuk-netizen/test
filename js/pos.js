@@ -98,12 +98,26 @@ function loadData() {
   const attrsData = localStorage.getItem('pos_attributes');
   const savedLang = localStorage.getItem('pos_lang');
   
+  // Check version and force refresh if needed
+  const currentVersion = '2.0';
+  const savedVersion = localStorage.getItem('pos_version');
+  
+  if (savedVersion !== currentVersion) {
+    console.log('Version mismatch, refreshing menu data...');
+    // Force refresh with latest menu
+    MENU = getDefaultMenu();
+    localStorage.setItem('pos_menu', JSON.stringify(MENU));
+    localStorage.setItem('pos_version', currentVersion);
+  } else {
+    // Load from storage
+    MENU = menuData ? JSON.parse(menuData) : getDefaultMenu();
+  }
+  
   TABLES = tablesData ? JSON.parse(tablesData) : getDefaultTables();
-  MENU = menuData ? JSON.parse(menuData) : getDefaultMenu();
   ATTRIBUTES = attrsData ? JSON.parse(attrsData) : getDefaultAttributes();
   CURRENT_LANG = savedLang || 'en';
   
-  // Ensure menu is saved to localStorage
+  // Ensure data is saved to localStorage
   if (!menuData) {
     localStorage.setItem('pos_menu', JSON.stringify(MENU));
   }
@@ -481,29 +495,43 @@ function printSingleItem(printerIp, order, item, copyNumber) {
               const printer = devobj;
               
               // Build single-item receipt
+              // Header - TABLE (Large, Centered)
               printer.addTextAlign(printer.ALIGN_CENTER);
               printer.addTextSize(2, 2);
-              printer.addText(`TABLE ${order.table}\n`);
-              printer.addTextSize(1, 1);
-              printer.addText(`Order: ${order.id}\n`);
-              printer.addText(`Time: ${new Date().toLocaleTimeString()}\n`);
-              printer.addText('================================\n');
+              printer.addText('TABLE ' + order.table);
+              printer.addFeedLine(1);
               
+              // Order Info (Normal, Centered)
+              printer.addTextSize(1, 1);
+              printer.addText('Order: ' + order.id);
+              printer.addFeedLine(1);
+              printer.addText('Time: ' + new Date().toLocaleTimeString());
+              printer.addFeedLine(1);
+              printer.addText('================================');
+              printer.addFeedLine(2);
+              
+              // Item Name (Large, Centered)
               printer.addTextSize(2, 2);
-              printer.addText(`${item.name}\n`);
-              printer.addTextSize(1, 1);
+              printer.addText(item.name);
+              printer.addFeedLine(1);
               
+              // Attributes (Normal, Left)
+              printer.addTextSize(1, 1);
               if (item.attrs && Object.keys(item.attrs).length > 0) {
+                printer.addTextAlign(printer.ALIGN_LEFT);
                 Object.entries(item.attrs).forEach(([key, value]) => {
-                  printer.addText(`  ${key}: ${value}\n`);
+                  printer.addText('  ' + key + ': ' + value);
+                  printer.addFeedLine(1);
                 });
+                printer.addTextAlign(printer.ALIGN_CENTER);
               }
               
-              printer.addText('\n');
-              printer.addTextAlign(printer.ALIGN_CENTER);
-              printer.addTextSize(1, 1);
-              printer.addText(`Copy ${copyNumber} of ${item.qty}\n`);
-              printer.addText(`${item.printer.toUpperCase()} PRINTER\n`);
+              // Copy Info (Normal, Centered)
+              printer.addFeedLine(1);
+              printer.addText('Copy ' + copyNumber + ' of ' + item.qty);
+              printer.addFeedLine(1);
+              printer.addText(item.printer.toUpperCase() + ' PRINTER');
+              printer.addFeedLine(1);
               
               printer.addFeedLine(3);
               printer.addCut(printer.CUT_FEED);
@@ -583,7 +611,7 @@ function showPreview() {
     id: generateOrderId(),
     table: SELECTED_TABLE,
     items: CART,
-    total: cart.reduce((sum, item) => sum + item.price * item.qty, 0),
+    total: CART.reduce((sum, item) => sum + (parseFloat(item.price) * item.qty), 0).toFixed(2),
     status: 'pending',
     createdAt: new Date().toISOString()
   };
@@ -611,12 +639,12 @@ function showPreview() {
     }
   });
 
-  document.getElementById('previewModal').classList.add('active');
+  document.getElementById('previewModal').classList.add('show');
 }
 
 // Close Preview Modal
 function closePreview() {
-  document.getElementById('previewModal').classList.remove('active');
+  document.getElementById('previewModal').classList.remove('show');
 }
 
 // Event Listeners
