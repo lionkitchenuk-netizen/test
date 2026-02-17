@@ -422,36 +422,45 @@ async function printOrder(order) {
   const foodPrinter = config.printer?.food;
   const drinkPrinter = config.printer?.drink;
   
+  console.log('=== PRINT ORDER START ===');
   console.log('Printing order:', order);
   console.log('Printer config:', config);
+  console.log('Food printer:', foodPrinter);
+  console.log('Drink printer:', drinkPrinter);
   
-  // Group items by printer
-  const printTasks = [];
+  // Print items sequentially to avoid overwhelming the printer
+  let ticketNumber = 0;
   
-  console.log(`Processing ${order.items.length} items for printing...`);
-  order.items.forEach((item, index) => {
-    console.log(`Item ${index + 1}:`, item.name, 'Printer:', item.printer, 'Qty:', item.qty);
-    const printerConfig = item.printer === 'food' ? foodPrinter : drinkPrinter;
-    console.log(`  Printer config for ${item.printer}:`, printerConfig);
+  for (const item of order.items) {
+    console.log(`\n--- Processing item: ${item.name} ---`);
+    console.log('  Printer type:', item.printer);
+    console.log('  Quantity:', item.qty);
     
-    if (printerConfig && printerConfig.ip) {
-      // Print each item 'qty' times
-      for (let i = 0; i < item.qty; i++) {
-        console.log(`  Adding print task ${i+1}/${item.qty} for ${item.name}`);
-        printTasks.push(
-          printSingleItem(printerConfig.ip, order, item, i + 1)
-            .then(() => console.log(`✓ Printed: ${item.name} (${i+1}/${item.qty})`))
-            .catch(err => console.error(`✗ Print failed: ${item.name}`, err))
-        );
-      }
-    } else {
-      console.warn(`  No valid printer config for ${item.name} (${item.printer})`);
+    const printerConfig = item.printer === 'food' ? foodPrinter : drinkPrinter;
+    console.log('  Selected printer config:', printerConfig);
+    
+    if (!printerConfig || !printerConfig.ip) {
+      console.error(`  ✗ No printer config found for ${item.printer}`);
+      continue;
     }
-  });
+    
+    // Print each quantity as separate ticket
+    for (let i = 0; i < item.qty; i++) {
+      ticketNumber++;
+      console.log(`  Printing ticket ${ticketNumber}: ${item.name} (${i+1}/${item.qty})`);
+      
+      try {
+        await printSingleItem(printerConfig.ip, order, item, i + 1);
+        console.log(`  ✓ Successfully printed ticket ${ticketNumber}`);
+        // Small delay between prints to avoid overwhelming printer
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (err) {
+        console.error(`  ✗ Failed to print ticket ${ticketNumber}:`, err);
+      }
+    }
+  }
   
-  console.log(`Total print tasks queued: ${printTasks.length}`);
-  
-  await Promise.allSettled(printTasks);
+  console.log(`\n=== PRINT ORDER COMPLETE (${ticketNumber} tickets) ===\n`);
 }
 
 // Print Single Item Ticket
@@ -459,10 +468,12 @@ function printSingleItem(printerIp, order, item, copyNumber) {
   return new Promise((resolve, reject) => {
     try {
       const eposDevice = new epson.ePOSDevice();
+      // Use unique device ID for each print task to avoid conflicts
+      const deviceId = `printer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       
       eposDevice.connect(printerIp, 8043, function(data) {
         if (data === 'OK' || data === 'SSL_CONNECT_OK') {
-          eposDevice.createDevice('local_printer', eposDevice.DEVICE_TYPE_PRINTER, {
+          eposDevice.createDevice(deviceId, eposDevice.DEVICE_TYPE_PRINTER, {
             crypto: false,
             buffer: false
           }, function(devobj, retcode) {

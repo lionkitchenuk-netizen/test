@@ -28,7 +28,10 @@
 </head>
 <body>
   <div class="admin">
-    <h1>Admin</h1>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h1 style="margin:0">Admin</h1>
+      <a href="setup.html" style="background:#2196F3;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:500">📚 Setup Instructions</a>
+    </div>
     
     <section>
       <h3>📋 Pending Orders</h3>
@@ -58,134 +61,33 @@
       <pre id="csvPreview" style="max-height:200px;overflow:auto;border:1px solid #eee;padding:8px;margin-top:10px"></pre>
     </section>
     <section>
-      <h3>Printer Setup Guide</h3>
-      <div style="background:#f8f8f8;padding:15px;border-radius:8px;margin-bottom:15px">
-        <p style="margin-bottom:10px"><strong>⚡ Quick Info: Which Mode Works Where?</strong></p>
-        <table style="width:100%;font-size:0.85rem;margin-bottom:15px;">
-          <tr style="background:#e3f2fd;">
-            <th style="padding:8px;text-align:left">Deployment</th>
-            <th style="padding:8px;text-align:left">Port Type</th>
-            <th style="padding:8px;text-align:left">Status</th>
-          </tr>
-          <tr>
-            <td style="padding:8px;border-bottom:1px solid #ddd">Local <code>node server.js</code></td>
-            <td style="padding:8px;border-bottom:1px solid #ddd">TCP (9100) ✅ &amp; EPOS (8043) ✅</td>
-            <td style="padding:8px;border-bottom:1px solid #ddd">Both work</td>
-          </tr>
-          <tr style="background:#fff3e0;">
-            <td style="padding:8px;border-bottom:1px solid #ddd">Cloudflare Pages + Worker</td>
-            <td style="padding:8px;border-bottom:1px solid #ddd">TCP (9100) ❌ / EPOS (8043) ✅</td>
-            <td style="padding:8px;border-bottom:1px solid #ddd">EPOS only</td>
-          </tr>
-        </table>
-        <p style="font-size:0.85rem;color:#d84315;margin-bottom:15px">
-          <strong>If deployed on Cloudflare:</strong> Select <strong>HTTPS/ePOS (8043)</strong> for test print to work!<br>
-          (TCP requires Node.js backend - use local server for TCP testing)
-        </p>
-        
-        <p style="margin-bottom:10px"><strong>Why print doesn't work directly?</strong></p>
-        <p style="font-size:0.9rem;color:#666;margin-bottom:15px">Browsers cannot directly connect to network printers (TCP/IP). Cloudflare Pages is a static hosting service - it only serves files, no backend code.</p>
-        
-        <p style="font-size:0.9rem;color:#666;margin-bottom:10px"><strong>OPTION A - Use Local Node.js Server (Recommended for testing)</strong></p>
-        <ol style="font-size:0.85rem;color:#666;margin-left:20px;margin-bottom:15px">
-          <li style="margin-bottom:5px">Install Node.js from <a href="https://nodejs.org" target="_blank">nodejs.org</a></li>
-          <li style="margin-bottom:5px">Open terminal, navigate to project folder</li>
-          <li style="margin-bottom:5px">Run: <code>npm install</code></li>
-          <li style="margin-bottom:5px">Run: <code>node server.js</code></li>
-          <li style="margin-bottom:5px">Open <code>http://localhost:3000</code> for customer page</li>
-          <li style="margin-bottom:5px">Open <code>http://localhost:3000/admin.html</code> for admin</li>
-          <li style="margin-bottom:5px">Keep terminal open - printing will work!</li>
-        </ol>
-        
-        <p style="font-size:0.9rem;color:#666;margin-bottom:10px"><strong>OPTION B - Use Cloudflare Worker (For cloud deployment)</strong></p>
-        <ol style="font-size:0.85rem;color:#666;margin-left:20px;margin-bottom:15px">
-          <li style="margin-bottom:5px">See <strong>CLOUDFLARE_WORKER_SETUP.md</strong> in project for detailed steps</li>
-          <li style="margin-bottom:5px">Create Cloudflare Worker from <strong>cloudflare-worker.js</strong> file</li>
-          <li style="margin-bottom:5px">Configure printer to use <strong>HTTPS/ePOS (8043)</strong> mode only</li>
-          <li style="margin-bottom:5px">Test print should work with EPOS-compatible printers</li>
-        </ol>
-        
-        <p style="font-size:0.9rem;color:#666;margin-bottom:10px"><strong>OPTION C - Use PrintNode Service (For production)</strong></p>
-        <ol style="font-size:0.85rem;color:#666;margin-left:20px;margin-bottom:15px">
-          <li style="margin-bottom:5px">Go to <a href="https://printnode.com" target="_blank">printnode.com</a> and create account</li>
-          <li style="margin-bottom:5px">Download and install PrintNode Client on a Windows PC connected to printer</li>
-          <li style="margin-bottom:5px">Get your Account ID from PrintNode dashboard</li>
-          <li style="margin-bottom:5px">Note the Printer ID from PrintNode</li>
-          <li style="margin-bottom:5px">You would need to modify code to use PrintNode API - requires developer work</li>
-        </ol>
-        
-        <p style="font-size:0.9rem;color:#666;margin-bottom:5px"><strong>QUICKEST START:</strong> Use Option A for testing. For production, consider Option B (Cloudflare Worker + EPOS printers) or hire developer to implement Option C.</p>
+      <h3>🖨️ Printer Configuration</h3>
+      <div style="background:#e3f2fd;padding:12px;border-radius:6px;margin-bottom:15px;font-size:0.9rem">
+        <strong>ℹ️ Using Epson ePOS SDK (Port 8043)</strong><br>
+        Make sure your printers have <strong>ePOS enabled</strong>. Need help? Check <a href="setup.html" style="color:#1976d2;text-decoration:underline">Setup Instructions</a>.
       </div>
-    </section>
-        </ol>
-        
-        <p style="font-size:0.9rem;color:#666;margin-bottom:10px"><strong>OPTION C - Use Cloudflare Workers (Advanced)</strong></p>
-        <ol style="font-size:0.85rem;color:#666;margin-left:20px;margin-bottom:15px">
-          <li style="margin-bottom:5px">Create a Cloudflare Worker</li>
-          <li style="margin-bottom:5px">Write JavaScript code to handle print requests</li>
-          <li style="margin-bottom:5px">Use fetch() to send ESC/POS commands to printer IP</li>
-          <li style="margin-bottom:5px">Update frontend to call worker URL instead of local server</li>
-          <li style="margin-bottom:5px">Note: Worker must be on paid plan for TCP connections</li>
-        </ol>
-        
-        <p style="font-size:0.9rem;color:#666;margin-bottom:5px"><strong>QUICKEST START:</strong> Use Option A for testing. For production, consider Option B or hire developer to implement Option C.</p>
-      </div>
-    </section>
 
-    <section>
-      <h3>Printer Settings</h3>
       <div class="form-group">
-        <label>Food Printer IP: <input id="foodIp" type="text" placeholder="192.168.x.x" /></label>
-        <label>Port Type: 
-          <select id="foodPortType" style="width:120px">
-            <option value="tcp">TCP (9100)</option>
-            <option value="https">HTTPS/ePOS (8043)</option>
-          </select>
-        </label>
-        <label>Port: <input id="foodPort" type="number" value="9100" style="width:80px"/></label>
+        <label><strong>Food Printer IP Address</strong></label>
+        <input id="foodIp" type="text" placeholder="e.g., 192.168.1.100" />
+        <small style="color:#666;font-size:0.85rem">Enter the IP address of your food/kitchen printer</small>
       </div>
       <div class="form-group">
-        <label>Drink Printer IP: <input id="drinkIp" type="text" placeholder="192.168.x.x" /></label>
-        <label>Port Type: 
-          <select id="drinkPortType" style="width:120px">
-            <option value="tcp">TCP (9100)</option>
-            <option value="https">HTTPS/ePOS (8043)</option>
-          </select>
-        </label>
-        <label>Port: <input id="drinkPort" type="number" value="9100" style="width:80px"/></label>
+        <label><strong>Drink Printer IP Address</strong></label>
+        <input id="drinkIp" type="text" placeholder="e.g., 192.168.1.101" />
+        <small style="color:#666;font-size:0.85rem">Enter the IP address of your drink/bar printer (can be same as food printer)</small>
       </div>
-      <button id="saveConfig">Save Printer Config</button>
+      <button id="saveConfig">💾 Save Configuration</button>
       <span id="saveStatus" style="margin-left:8px;color:green"></span>
-      <div style="margin-top:15px;padding-top:15px;border-top:1px solid #eee">
-        <h4>Test Print (via Server)</h4>
+      
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid #eee">
+        <h4 style="margin-bottom:10px">🧪 Test Print</h4>
         <div class="form-group">
-          <label>Test Printer IP: <input id="testIp" type="text" placeholder="192.168.x.x" /></label>
-          <label>Port Type: 
-            <select id="testPortType" style="width:120px">
-              <option value="tcp">TCP (9100)</option>
-              <option value="https">HTTPS/ePOS (8043)</option>
-            </select>
-          </label>
-          <label>Port: <input id="testPort" type="number" value="9100" style="width:80px"/></label>
+          <label><strong>Test Printer IP</strong></label>
+          <input id="eposIp" type="text" placeholder="e.g., 192.168.1.100" />
+          <small style="color:#666;font-size:0.85rem">Enter any printer IP to test connection</small>
         </div>
-        <button id="testPrint" class="test-print-btn">Test Print (Server)</button>
-        <span id="testStatus" style="margin-left:8px"></span>
-      </div>
-    </section>
-      <div style="margin-top:15px;padding-top:15px;border-top:1px solid #eee">
-        <h4>Test Print (via Epson ePOS SDK)</h4>
-        <div style="background:#e3f2fd;padding:10px;border-radius:4px;margin-bottom:10px;font-size:0.85rem">
-          <strong>Requirements:</strong>
-          <ul style="margin:5px 0 0 20px;padding:0">
-            <li>Printer must have <strong>ePOS SDK enabled</strong> (port 8043)</li>
-            <li>Browser must be on <strong>same network</strong> as printer</li>
-            <li>Check printer's web interface to enable ePOS</li>
-          </ul>
-        </div>
-        <div class="form-group">
-          <label>Printer IP: <input id="eposIp" type="text" placeholder="192.168.x.x" /></label>
-        </div>
-        <button id="testPrintEpos" style="background:#2196F3;">Test Print (ePOS SDK)</button>
+        <button id="testPrintEpos" style="background:#4caf50;">✓ Send Test Print</button>
         <span id="eposStatus" style="margin-left:8px"></span>
       </div>
     </section>

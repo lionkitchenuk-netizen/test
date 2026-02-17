@@ -282,14 +282,8 @@ function loadConfig() {
     const food = data.config.printer.food || {};
     const drink = data.config.printer.drink || {};
     document.getElementById('foodIp').value = food.ip || '';
-    document.getElementById('foodPort').value = food.port || 9100;
-    document.getElementById('foodPortType').value = food.portType || 'tcp';
     document.getElementById('drinkIp').value = drink.ip || '';
-    document.getElementById('drinkPort').value = drink.port || 9100;
-    document.getElementById('drinkPortType').value = drink.portType || 'tcp';
-    document.getElementById('testIp').value = food.ip || '192.168.18.50';
-    document.getElementById('testPort').value = food.port || 9100;
-    document.getElementById('testPortType').value = food.portType || 'tcp';
+    document.getElementById('eposIp').value = food.ip || '';
   }
 }
 
@@ -298,13 +292,13 @@ function saveConfig() {
     printer: {
       food: {
         ip: document.getElementById('foodIp').value,
-        port: Number(document.getElementById('foodPort').value),
-        portType: document.getElementById('foodPortType').value
+        port: 8043,  // Always ePOS SDK port
+        portType: 'https'
       },
       drink: {
         ip: document.getElementById('drinkIp').value,
-        port: Number(document.getElementById('drinkPort').value),
-        portType: document.getElementById('drinkPortType').value
+        port: 8043,  // Always ePOS SDK port
+        portType: 'https'
       }
     }
   };
@@ -422,20 +416,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadConfig();
   document.getElementById('saveConfig').addEventListener('click', saveConfig);
 
-  document.getElementById('testPrint').addEventListener('click', testPrint);
-  
   document.getElementById('resetDefaults').addEventListener('click', resetToDefaults);
-
-  // Port type change handlers - update default port numbers
-  ['food', 'drink', 'test'].forEach(prefix => {
-    const portTypeSelect = document.getElementById(prefix + 'PortType');
-    const portInput = document.getElementById(prefix + 'Port');
-    if (portTypeSelect) {
-      portTypeSelect.addEventListener('change', (e) => {
-        portInput.value = e.target.value === 'https' ? 8043 : 9100;
-      });
-    }
-  });
   
   // Initialize new sections
   if (document.getElementById('pendingOrders')) {
