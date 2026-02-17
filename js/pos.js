@@ -512,95 +512,60 @@ async function printOrder(order) {
   console.log(`\n=== PRINT ORDER COMPLETE (${ticketNumber} tickets) ===\n`);
 }
 
-// Print Single Item Ticket  
+// Print Single Item Ticket via Cloudflare API
 function printSingleItem(printerIp, order, item, copyNumber) {
   return new Promise((resolve, reject) => {
     console.log(`[PRINT] Start printing ${item.name} to ${printerIp}`);
     
     try {
-      const device = new epson.ePOSDevice();
-      console.log(`[PRINT] ePOSDevice created`);
-      console.log(`[PRINT] DEVICE_TYPE_PRINTER value: ${device.DEVICE_TYPE_PRINTER}`);
-      
-      device.connect(printerIp, 8043, function(result) {
-        console.log(`[PRINT] Connect result: ${result}`);
+      // Prepare print request data
+      const printRequest = {
+        printerIp: printerIp,
+        order: {
+          id: order.id,
+          table: order.table
+        },
+        item: {
+          name: item.name,
+          qty: item.qty,
+          notes: item.notes || ''
+        },
+        copyNumber: copyNumber
+      };
+
+      console.log(`[PRINT] Sending to /api/print:`, printRequest);
+
+      // Send to Cloudflare API
+      fetch('/api/print', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(printRequest)
+      })
+      .then(response => {
+        console.log(`[PRINT] API response status: ${response.status}`);
         
-        if (result !== 'OK' && result !== 'SSL_CONNECT_OK') {
-          console.error(`[PRINT] Connection error: ${result}`);
-          reject(new Error(`Connect failed: ${result}`));
-          return;
+        if (!response.ok) {
+          // Try to parse error details
+          return response.json().then(data => {
+            throw new Error(data.error || `HTTP ${response.status}`);
+          }).catch(() => {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          });
         }
         
-        console.log(`[PRINT] Connected! Creating device with DEVICE_TYPE_PRINTER`);
-        
-        // Create device with unique ID
-        const devId = `ticket_${Date.now()}`;
-        console.log(`[PRINT] Calling createDevice with id: ${devId}`);
-        
-        device.createDevice(devId, device.DEVICE_TYPE_PRINTER, {}, function(printer, code) {
-          console.log(`[PRINT] createDevice callback: code=${code}, printer=${printer ? 'YES' : 'NO'}`);
-          
-          if (code !== 'OK') {
-            console.error(`[PRINT] CreateDevice error code: ${code}`);
-            reject(new Error(`CreateDevice failed: ${code}`));
-            return;
-          }
-          
-          try {
-            console.log(`[PRINT] Device created! Building receipt...`);
-            
-            // Simple receipt
-            printer.addTextAlign('center');
-            printer.addText('TABLE ' + order.table);
-            printer.addFeed();
-            
-            printer.addText('Order: ' + order.id);
-            printer.addFeed();
-            
-            printer.addText(item.name);
-            printer.addFeed();
-            
-            printer.addText('Qty: ' + copyNumber + '/' + item.qty);
-            printer.addFeed();
-            
-            printer.addCut('feed');
-            
-            console.log(`[PRINT] Receipt built, sending...`);
-            
-            // Set response handler
-            printer.onreceive = function(resp) {
-              console.log(`[PRINT] Print response:`, resp);
-              device.deleteDevice(printer, function(delCode) {
-                console.log(`[PRINT] Device deleted: ${delCode}`);
-              });
-              
-              if (resp && resp.success) {
-                console.log(`[PRINT] Success!`);
-                resolve();
-              } else {
-                const errMsg = resp ? resp.code : 'unknown';
-                console.error(`[PRINT] Failed: ${errMsg}`);
-                reject(new Error(`Print failed: ${errMsg}`));
-              }
-            };
-            
-            printer.onerror = function(err) {
-              console.error(`[PRINT] Error handler:`, err);
-              device.deleteDevice(printer, function() {});
-              reject(new Error(`Printer error: ${err?.code || 'unknown'}`));
-            };
-            
-            // Send print
-            printer.send();
-            console.log(`[PRINT] send() called`);
-            
-          } catch (e) {
-            console.error(`[PRINT] Exception building receipt: ${e.message}`);
-            reject(e);
-          }
-        });
-        
-      }); // connect callback
+        return response.json();
+      })
+      .then(data => {
+        console.log(`[PRINT] Success response:`, data);
+        console.log(`[PRINT] Printed ${data.itemName} for Table ${data.table}, Order ${data.orderId}`);
+        resolve(data);
+      })
+      .catch(error => {
+        console.error(`[PRINT] Error:`, error.message);
+        reject(error);
+      });
       
     } catch (e) {
       console.error(`[PRINT] Exception: ${e.message}`);
