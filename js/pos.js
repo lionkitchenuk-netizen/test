@@ -98,38 +98,73 @@ function loadData() {
   const attrsData = localStorage.getItem('pos_attributes');
   const savedLang = localStorage.getItem('pos_lang');
   
-  // Check version and force refresh if needed
-  const currentVersion = '2.0';
-  const savedVersion = localStorage.getItem('pos_version');
+  // Always load from default first to ensure we have the latest data structure
+  MENU = getDefaultMenu();
+  TABLES = getDefaultTables();
+  ATTRIBUTES = getDefaultAttributes();
   
-  if (savedVersion !== currentVersion) {
-    console.log('Version mismatch, refreshing menu data...');
-    // Force refresh with latest menu
-    MENU = getDefaultMenu();
-    localStorage.setItem('pos_menu', JSON.stringify(MENU));
-    localStorage.setItem('pos_version', currentVersion);
+  // Then override with localStorage if exists and is valid
+  if (menuData && menuData.length > 10) { // Basic validation
+    try {
+      const parsed = JSON.parse(menuData);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        MENU = parsed;
+        console.log('✓ Loaded menu from localStorage:', MENU.length, 'items');
+      } else {
+        console.error('Menu data is not a valid array, using defaults');
+        MENU = getDefaultMenu();
+      }
+    } catch (e) {
+      console.error('Failed to parse menu from localStorage:', e.message);
+      MENU = getDefaultMenu();
+    }
   } else {
-    // Load from storage
-    MENU = menuData ? JSON.parse(menuData) : getDefaultMenu();
+    console.log('No valid menu data in localStorage, using defaults');
   }
   
-  TABLES = tablesData ? JSON.parse(tablesData) : getDefaultTables();
-  ATTRIBUTES = attrsData ? JSON.parse(attrsData) : getDefaultAttributes();
+  if (tablesData && tablesData.length > 5) {
+    try {
+      const parsed = JSON.parse(tablesData);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        TABLES = parsed;
+      } else {
+        TABLES = getDefaultTables();
+      }
+    } catch (e) {
+      console.error('Failed to parse tables from localStorage');
+      TABLES = getDefaultTables();
+    }
+  }
+  
+  if (attrsData && attrsData.length > 5) {
+    try {
+      const parsed = JSON.parse(attrsData);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        ATTRIBUTES = parsed;
+      } else {
+        ATTRIBUTES = getDefaultAttributes();
+      }
+    } catch (e) {
+      console.error('Failed to parse attributes from localStorage');
+      ATTRIBUTES = getDefaultAttributes();
+    }
+  }
+  
   CURRENT_LANG = savedLang || 'en';
   
-  // Ensure data is saved to localStorage
-  if (!menuData) {
-    localStorage.setItem('pos_menu', JSON.stringify(MENU));
-  }
-  if (!tablesData) {
-    localStorage.setItem('pos_tables', JSON.stringify(TABLES));
-  }
-  if (!attrsData) {
-    localStorage.setItem('pos_attributes', JSON.stringify(ATTRIBUTES));
-  }
+  // Always save to localStorage to ensure consistency
+  localStorage.setItem('pos_menu', JSON.stringify(MENU));
+  localStorage.setItem('pos_tables', JSON.stringify(TABLES));
+  localStorage.setItem('pos_attributes', JSON.stringify(ATTRIBUTES));
+  localStorage.setItem('pos_version', '2.0');
+  
+  console.log('✓ Data loaded - Menu:', MENU.length, 'items, Tables:', TABLES.length);
   
   // Update language button
-  document.getElementById('langToggle').textContent = CURRENT_LANG === 'en' ? '中文' : 'EN';
+  const langBtn = document.getElementById('langToggle');
+  if (langBtn) {
+    langBtn.textContent = CURRENT_LANG === 'en' ? '中文' : 'EN';
+  }
 }
 
 function getDefaultTables() {
@@ -477,96 +512,103 @@ async function printOrder(order) {
   console.log(`\n=== PRINT ORDER COMPLETE (${ticketNumber} tickets) ===\n`);
 }
 
-// Print Single Item Ticket
+// Print Single Item Ticket  
 function printSingleItem(printerIp, order, item, copyNumber) {
   return new Promise((resolve, reject) => {
+    console.log(`[PRINT] Start printing ${item.name} to ${printerIp}`);
+    
     try {
-      const eposDevice = new epson.ePOSDevice();
-      // Use unique device ID for each print task to avoid conflicts
-      const deviceId = `printer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const device = new epson.ePOSDevice();
+      console.log(`[PRINT] ePOSDevice created`);
+      console.log(`[PRINT] DEVICE_TYPE_PRINTER value: ${device.DEVICE_TYPE_PRINTER}`);
       
-      eposDevice.connect(printerIp, 8043, function(data) {
-        if (data === 'OK' || data === 'SSL_CONNECT_OK') {
-          eposDevice.createDevice(deviceId, eposDevice.DEVICE_TYPE_PRINTER, {
-            crypto: false,
-            buffer: false
-          }, function(devobj, retcode) {
-            if (retcode === 'OK') {
-              const printer = devobj;
-              
-              // Build single-item receipt
-              // Header - TABLE (Large, Centered)
-              printer.addTextAlign(printer.ALIGN_CENTER);
-              printer.addTextSize(2, 2);
-              printer.addText('TABLE ' + order.table);
-              printer.addFeedLine(1);
-              
-              // Order Info (Normal, Centered)
-              printer.addTextSize(1, 1);
-              printer.addText('Order: ' + order.id);
-              printer.addFeedLine(1);
-              printer.addText('Time: ' + new Date().toLocaleTimeString());
-              printer.addFeedLine(1);
-              printer.addText('================================');
-              printer.addFeedLine(2);
-              
-              // Item Name (Large, Centered)
-              printer.addTextSize(2, 2);
-              printer.addText(item.name);
-              printer.addFeedLine(1);
-              
-              // Attributes (Normal, Left)
-              printer.addTextSize(1, 1);
-              if (item.attrs && Object.keys(item.attrs).length > 0) {
-                printer.addTextAlign(printer.ALIGN_LEFT);
-                Object.entries(item.attrs).forEach(([key, value]) => {
-                  printer.addText('  ' + key + ': ' + value);
-                  printer.addFeedLine(1);
-                });
-                printer.addTextAlign(printer.ALIGN_CENTER);
-              }
-              
-              // Copy Info (Normal, Centered)
-              printer.addFeedLine(1);
-              printer.addText('Copy ' + copyNumber + ' of ' + item.qty);
-              printer.addFeedLine(1);
-              printer.addText(item.printer.toUpperCase() + ' PRINTER');
-              printer.addFeedLine(1);
-              
-              printer.addFeedLine(3);
-              printer.addCut(printer.CUT_FEED);
-              
-              printer.send();
-              
-              printer.onreceive = function(res) {
-                eposDevice.deleteDevice(printer);
-                eposDevice.disconnect();
-                if (res.success) {
-                  resolve();
-                } else {
-                  reject(new Error('Print failed: ' + res.code));
-                }
-              };
-              
-              printer.onerror = function(err) {
-                eposDevice.deleteDevice(printer);
-                eposDevice.disconnect();
-                reject(new Error('Printer error: ' + err.status));
-              };
-            } else {
-              eposDevice.disconnect();
-              reject(new Error('Failed to create printer: ' + retcode));
-            }
-          });
-        } else {
-          reject(new Error('Connection failed: ' + data));
+      device.connect(printerIp, 8043, function(result) {
+        console.log(`[PRINT] Connect result: ${result}`);
+        
+        if (result !== 'OK' && result !== 'SSL_CONNECT_OK') {
+          console.error(`[PRINT] Connection error: ${result}`);
+          reject(new Error(`Connect failed: ${result}`));
+          return;
         }
-      });
+        
+        console.log(`[PRINT] Connected! Creating device with DEVICE_TYPE_PRINTER`);
+        
+        // Create device with unique ID
+        const devId = `ticket_${Date.now()}`;
+        console.log(`[PRINT] Calling createDevice with id: ${devId}`);
+        
+        device.createDevice(devId, device.DEVICE_TYPE_PRINTER, {}, function(printer, code) {
+          console.log(`[PRINT] createDevice callback: code=${code}, printer=${printer ? 'YES' : 'NO'}`);
+          
+          if (code !== 'OK') {
+            console.error(`[PRINT] CreateDevice error code: ${code}`);
+            reject(new Error(`CreateDevice failed: ${code}`));
+            return;
+          }
+          
+          try {
+            console.log(`[PRINT] Device created! Building receipt...`);
+            
+            // Simple receipt
+            printer.addTextAlign('center');
+            printer.addText('TABLE ' + order.table);
+            printer.addFeed();
+            
+            printer.addText('Order: ' + order.id);
+            printer.addFeed();
+            
+            printer.addText(item.name);
+            printer.addFeed();
+            
+            printer.addText('Qty: ' + copyNumber + '/' + item.qty);
+            printer.addFeed();
+            
+            printer.addCut('feed');
+            
+            console.log(`[PRINT] Receipt built, sending...`);
+            
+            // Set response handler
+            printer.onreceive = function(resp) {
+              console.log(`[PRINT] Print response:`, resp);
+              device.deleteDevice(printer, function(delCode) {
+                console.log(`[PRINT] Device deleted: ${delCode}`);
+              });
+              
+              if (resp && resp.success) {
+                console.log(`[PRINT] Success!`);
+                resolve();
+              } else {
+                const errMsg = resp ? resp.code : 'unknown';
+                console.error(`[PRINT] Failed: ${errMsg}`);
+                reject(new Error(`Print failed: ${errMsg}`));
+              }
+            };
+            
+            printer.onerror = function(err) {
+              console.error(`[PRINT] Error handler:`, err);
+              device.deleteDevice(printer, function() {});
+              reject(new Error(`Printer error: ${err?.code || 'unknown'}`));
+            };
+            
+            // Send print
+            printer.send();
+            console.log(`[PRINT] send() called`);
+            
+          } catch (e) {
+            console.error(`[PRINT] Exception building receipt: ${e.message}`);
+            reject(e);
+          }
+        });
+        
+      }); // connect callback
+      
     } catch (e) {
+      console.error(`[PRINT] Exception: ${e.message}`);
       reject(e);
     }
   });
 }
+
 
 // Generate Ticket Preview Text
 function generateTicketPreview(order, item, copyNumber) {

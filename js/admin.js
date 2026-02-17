@@ -1,4 +1,13 @@
-// Admin functionality - Modern POS with Payment & Table Management
+// Add this at the very beginning after initial imports
+function updateDataStatus() {
+  const menu = JSON.parse(localStorage.getItem('pos_menu') || '[]');
+  const tables = JSON.parse(localStorage.getItem('pos_tables') || '[]');
+  const status = document.getElementById('dataStatus');
+  
+  if (status) {
+    status.textContent = `Menu Items: ${menu.length} loaded\nTables: ${tables.length} configured\nLast Updated: ${new Date().toLocaleTimeString()}`;
+  }
+}
 
 // Load and display pending orders
 function loadPendingOrders() {
@@ -216,11 +225,21 @@ function importCSV(type, csvText) {
   });
   
   if (type === 'menu.csv') {
+    console.log('Importing menu.csv with', rows.length, 'items');
     saveData('MENU', rows);
+    // Also directly save to localStorage for order page
+    localStorage.setItem('pos_menu', JSON.stringify(rows));
+    console.log('Menu saved to localStorage:', rows.length, 'items');
   } else if (type === 'sets.csv') {
     saveData('SETS', rows);
   } else if (type === 'attributes.csv') {
     saveData('ATTRS', rows);
+  } else if (type === 'tables.csv') {
+    console.log('Importing tables.csv with', rows.length, 'tables');
+    saveData('TABLES', rows);
+    // Also directly save to localStorage for order page
+    localStorage.setItem('pos_tables', JSON.stringify(rows));
+    console.log('Tables saved to localStorage:', rows.length, 'tables');
   }
   
   return true;
@@ -401,7 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!importCSV(sel.value, txt)) {
       return alert(t('validationFailed'));
     }
-    alert(t('uploadSuccess'));
+    alert(t('uploadSuccess') + '\n\n⚠️  Please refresh the Order page (Ctrl+R or Cmd+R) to load the new data.');
     loadCSVPreview(sel.value);
   });
 

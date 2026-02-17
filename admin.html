@@ -46,17 +46,24 @@
     
     <section>
       <h3>CSV Management</h3>
+      <div style="background:#e8f5e9;padding:12px;border-radius:6px;margin-bottom:15px;font-size:0.9rem">
+        <strong>📌 Important:</strong> After uploading a CSV file, click <strong>Upload</strong>, then refresh the Order page to load the new data.
+      </div>
       <select id="csvSelect" style="margin-bottom:10px">
-        <option value="menu.csv">menu.csv</option>
+        <option value="menu.csv">📋 menu.csv (Food & Drink Items)</option>
+        <option value="tables.csv">🪑 tables.csv (Table Configuration)</option>
         <option value="sets.csv">sets.csv</option>
         <option value="attributes.csv">attributes.csv</option>
-        <option value="tables.csv">tables.csv</option>
       </select>
       <input type="file" id="csvFile" accept=".csv" style="margin-bottom:10px" />
       <div>
-        <button id="validateCsv">Validate</button>
-        <button id="uploadCsv">Upload</button>
-        <button id="downloadCsv">Download</button>
+        <button id="validateCsv">✓ Validate</button>
+        <button id="uploadCsv" style="background:#4caf50">⬆️ Upload CSV</button>
+        <button id="downloadCsv">⬇️ Download Template</button>
+      </div>
+      <div style="background:#fff3e0;padding:10px;border-radius:6px;margin-top:10px;font-size:0.9rem">
+        <strong>Data Status:</strong>
+        <pre id="dataStatus" style="margin:10px 0 0 0;font-size:0.85rem"></pre>
       </div>
       <pre id="csvPreview" style="max-height:200px;overflow:auto;border:1px solid #eee;padding:8px;margin-top:10px"></pre>
     </section>
