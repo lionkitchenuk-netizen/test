@@ -465,145 +465,129 @@ function saveOrder(order) {
   localStorage.setItem('pos_orders', JSON.stringify(orders));
 }
 
-// Print Order - 1 ticket with ALL items
+// Print Order - 1 ticket per item
 async function printOrder(order) {
   const config = JSON.parse(localStorage.getItem('pos_config') || '{}');
   const foodPrinter = config.printer?.food;
   const drinkPrinter = config.printer?.drink;
   
-  console.log('=== PRINT ORDER START ===');
   console.log('Printing order:', order);
-  console.log('Food printer:', foodPrinter);
-  console.log('Drink printer:', drinkPrinter);
+  console.log('Printer config:', config);
   
-  if (!foodPrinter || !foodPrinter.ip) {
-    console.error('✗ Food printer not configured');
-    return;
-  }
+  // Group items by printer
+  const printTasks = [];
   
-  // Print 1 ticket for ALL items
-  try {
-    console.log('Printing 1 ticket for all items...');
-    await printSingleTicket(foodPrinter.ip, order);
-    console.log('✓ Ticket printed successfully');
-  } catch (err) {
-    console.error('✗ Failed to print:', err.message);
-  }
+  console.log(`Processing ${order.items.length} items for printing...`);
+  order.items.forEach((item, index) => {
+    console.log(`Item ${index + 1}:`, item.name, 'Printer:', item.printer, 'Qty:', item.qty);
+    const printerConfig = item.printer === 'food' ? foodPrinter : drinkPrinter;
+    console.log(`  Printer config for ${item.printer}:`, printerConfig);
+    
+    if (printerConfig && printerConfig.ip) {
+      // Print each item 'qty' times
+      for (let i = 0; i < item.qty; i++) {
+        console.log(`  Adding print task ${i+1}/${item.qty} for ${item.name}`);
+        printTasks.push(
+          printSingleItem(printerConfig.ip, order, item, i + 1)
+            .then(() => console.log(`✓ Printed: ${item.name} (${i+1}/${item.qty})`))
+            .catch(err => console.error(`✗ Print failed: ${item.name}`, err))
+        );
+      }
+    } else {
+      console.warn(`  No valid printer config for ${item.name} (${item.printer})`);
+    }
+  });
   
-  console.log('=== PRINT ORDER COMPLETE ===\n');
+  console.log(`Total print tasks queued: ${printTasks.length}`);
+  
+  await Promise.allSettled(printTasks);
 }
 
-// Print Single Ticket with ALL items using Direct ePOS SDK
-function printSingleTicket(printerIp, order) {
+// Print Single Item Ticket
+function printSingleItem(printerIp, order, item, copyNumber) {
   return new Promise((resolve, reject) => {
-    console.log(`[PRINT] Start printing to ${printerIp}`);
-    
     try {
-      const device = new epson.ePOSDevice();
-      console.log('[PRINT] ePOSDevice created');
-      console.log(`[PRINT] DEVICE_TYPE_PRINTER value: ${device.DEVICE_TYPE_PRINTER}`);
-      
-      device.connect(printerIp, 8043, function(result) {
-        console.log(`[PRINT] Connect result: ${result}`);
-        
-        if (result !== 'OK' && result !== 'SSL_CONNECT_OK') {
-          console.error(`[PRINT] Connection error: ${result}`);
-          reject(new Error(`Connect failed: ${result}`));
-          return;
-        }
-        
-        console.log('[PRINT] Connected! Creating device...');
-        
-        // Create device
-        const devId = `ticket_${Date.now()}`;
-        console.log(`[PRINT] Creating device with ID: ${devId}`);
-        
-        device.createDevice(devId, device.DEVICE_TYPE_PRINTER, {}, function(printer, code) {
-          console.log(`[PRINT] createDevice callback: code=${code}, printer=${printer ? 'YES' : 'NO'}`);
-          
-          if (code !== 'OK') {
-            console.error(`[PRINT] CreateDevice error: ${code}`);
-            reject(new Error(`CreateDevice failed: ${code}`));
-            return;
-          }
-          
-          try {
-            console.log('[PRINT] Device created! Building receipt...');
-            
-            // Build receipt with all items
-            printer.addTextAlign('center');
-            printer.addText('=== ORDER TICKET ===');
-            printer.addFeed();
-            
-            printer.addText('TABLE ' + order.table);
-            printer.addFeed();
-            
-            printer.addText('Order: ' + order.id);
-            printer.addFeed();
-            
-            printer.addText(new Date().toLocaleTimeString());
-            printer.addFeed();
-            
-            printer.addTextAlign('left');
-            printer.addFeed();
-            
-            // Add all items
-            order.items.forEach((item, idx) => {
-              printer.addText(`${idx + 1}. ${item.name}`);
-              printer.addText(`   Qty: ${item.qty}`);
-              if (item.notes) {
-                printer.addText(`   Notes: ${item.notes}`);
-              }
-              printer.addFeed();
-            });
-            
-            // Total
-            printer.addTextAlign('center');
-            printer.addFeed();
-            printer.addText(`Total: $${order.total}`);
-            printer.addFeed();
-            printer.addFeed();
-            
-            printer.addCut('feed');
-            
-            console.log('[PRINT] Receipt built, sending...');
-            
-            // Set handlers
-            printer.onreceive = function(resp) {
-              console.log('[PRINT] Receive callback:', resp);
-              device.deleteDevice(printer, function() {
-                console.log('[PRINT] Device deleted');
-              });
+      const eposDevice = new epson.ePOSDevice();
+      // Use unique device ID for each print task to avoid conflicts
+      const deviceId = `printer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      eposDevice.connect(printerIp, 8043, function(data) {
+        if (data === 'OK' || data === 'SSL_CONNECT_OK') {
+          eposDevice.createDevice(deviceId, eposDevice.DEVICE_TYPE_PRINTER, {
+            crypto: false,
+            buffer: false
+          }, function(devobj, retcode) {
+            if (retcode === 'OK') {
+              const printer = devobj;
               
-              if (resp && resp.success) {
-                console.log('[PRINT] ✓ Print succeeded!');
-                resolve({ ok: true });
-              } else {
-                console.error(`[PRINT] ✗ Print failed: ${resp?.code || 'unknown'}`);
-                reject(new Error(`Print failed: ${resp?.code || 'unknown'}`));
+              // Build single-item receipt
+              // Header - TABLE (Large, Centered)
+              printer.addTextAlign(printer.ALIGN_CENTER);
+              printer.addTextSize(2, 2);
+              printer.addText('TABLE ' + order.table);
+              printer.addFeedLine(1);
+              
+              // Order Info (Normal, Centered)
+              printer.addTextSize(1, 1);
+              printer.addText('Order: ' + order.id);
+              printer.addFeedLine(1);
+              printer.addText('Time: ' + new Date().toLocaleTimeString());
+              printer.addFeedLine(1);
+              printer.addText('================================');
+              printer.addFeedLine(2);
+              
+              // Item Name (Large, Centered)
+              printer.addTextSize(2, 2);
+              printer.addText(item.name);
+              printer.addFeedLine(1);
+              
+              // Attributes (Normal, Left)
+              printer.addTextSize(1, 1);
+              if (item.attrs && Object.keys(item.attrs).length > 0) {
+                printer.addTextAlign(printer.ALIGN_LEFT);
+                Object.entries(item.attrs).forEach(([key, value]) => {
+                  printer.addText('  ' + key + ': ' + value);
+                  printer.addFeedLine(1);
+                });
+                printer.addTextAlign(printer.ALIGN_CENTER);
               }
-            };
-            
-            printer.onerror = function(err) {
-              console.error('[PRINT] Error callback:', err);
-              device.deleteDevice(printer, function() {});
-              reject(new Error(`Printer error: ${err?.code || 'unknown'}`));
-            };
-            
-            // Send
-            printer.send();
-            console.log('[PRINT] send() called');
-            
-          } catch (e) {
-            console.error(`[PRINT] Exception: ${e.message}`);
-            reject(e);
-          }
-        });
-        
+              
+              // Copy Info (Normal, Centered)
+              printer.addFeedLine(1);
+              printer.addText('Copy ' + copyNumber + ' of ' + item.qty);
+              printer.addFeedLine(1);
+              printer.addText(item.printer.toUpperCase() + ' PRINTER');
+              printer.addFeedLine(1);
+              
+              printer.addFeedLine(3);
+              printer.addCut(printer.CUT_FEED);
+              
+              printer.send();
+              
+              printer.onreceive = function(res) {
+                eposDevice.deleteDevice(printer);
+                eposDevice.disconnect();
+                if (res.success) {
+                  resolve();
+                } else {
+                  reject(new Error('Print failed: ' + res.code));
+                }
+              };
+              
+              printer.onerror = function(err) {
+                eposDevice.deleteDevice(printer);
+                eposDevice.disconnect();
+                reject(new Error('Printer error: ' + err.status));
+              };
+            } else {
+              eposDevice.disconnect();
+              reject(new Error('Failed to create printer: ' + retcode));
+            }
+          });
+        } else {
+          reject(new Error('Connection failed: ' + data));
+        }
       });
-      
     } catch (e) {
-      console.error(`[PRINT] Exception: ${e.message}`);
       reject(e);
     }
   });
