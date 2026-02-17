@@ -465,7 +465,7 @@ function saveOrder(order) {
   localStorage.setItem('pos_orders', JSON.stringify(orders));
 }
 
-// Print Order - 1 ticket per item
+// Print Order - 1 ticket with ALL items
 async function printOrder(order) {
   const config = JSON.parse(localStorage.getItem('pos_config') || '{}');
   const foodPrinter = config.printer?.food;
@@ -473,98 +473,133 @@ async function printOrder(order) {
   
   console.log('=== PRINT ORDER START ===');
   console.log('Printing order:', order);
-  console.log('Printer config:', config);
   console.log('Food printer:', foodPrinter);
   console.log('Drink printer:', drinkPrinter);
   
-  // Print items sequentially to avoid overwhelming the printer
-  let ticketNumber = 0;
-  
-  for (const item of order.items) {
-    console.log(`\n--- Processing item: ${item.name} ---`);
-    console.log('  Printer type:', item.printer);
-    console.log('  Quantity:', item.qty);
-    
-    const printerConfig = item.printer === 'food' ? foodPrinter : drinkPrinter;
-    console.log('  Selected printer config:', printerConfig);
-    
-    if (!printerConfig || !printerConfig.ip) {
-      console.error(`  ✗ No printer config found for ${item.printer}`);
-      continue;
-    }
-    
-    // Print each quantity as separate ticket
-    for (let i = 0; i < item.qty; i++) {
-      ticketNumber++;
-      console.log(`  Printing ticket ${ticketNumber}: ${item.name} (${i+1}/${item.qty})`);
-      
-      try {
-        await printSingleItem(printerConfig.ip, order, item, i + 1);
-        console.log(`  ✓ Successfully printed ticket ${ticketNumber}`);
-        // Small delay between prints to avoid overwhelming printer
-        await new Promise(resolve => setTimeout(resolve, 500));
-      } catch (err) {
-        console.error(`  ✗ Failed to print ticket ${ticketNumber}:`, err);
-      }
-    }
+  if (!foodPrinter || !foodPrinter.ip) {
+    console.error('✗ Food printer not configured');
+    return;
   }
   
-  console.log(`\n=== PRINT ORDER COMPLETE (${ticketNumber} tickets) ===\n`);
+  // Print 1 ticket for ALL items
+  try {
+    console.log('Printing 1 ticket for all items...');
+    await printSingleTicket(foodPrinter.ip, order);
+    console.log('✓ Ticket printed successfully');
+  } catch (err) {
+    console.error('✗ Failed to print:', err.message);
+  }
+  
+  console.log('=== PRINT ORDER COMPLETE ===\n');
 }
 
-// Print Single Item Ticket via Cloudflare API
-function printSingleItem(printerIp, order, item, copyNumber) {
+// Print Single Ticket with ALL items using Direct ePOS SDK
+function printSingleTicket(printerIp, order) {
   return new Promise((resolve, reject) => {
-    console.log(`[PRINT] Start printing ${item.name} to ${printerIp}`);
+    console.log(`[PRINT] Start printing to ${printerIp}`);
     
     try {
-      // Prepare print request data
-      const printRequest = {
-        printerIp: printerIp,
-        order: {
-          id: order.id,
-          table: order.table
-        },
-        item: {
-          name: item.name,
-          qty: item.qty,
-          notes: item.notes || ''
-        },
-        copyNumber: copyNumber
-      };
-
-      console.log(`[PRINT] Sending to /api/print:`, printRequest);
-
-      // Send to Cloudflare API
-      fetch('/api/print', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(printRequest)
-      })
-      .then(response => {
-        console.log(`[PRINT] API response status: ${response.status}`);
+      const device = new epson.ePOSDevice();
+      console.log('[PRINT] ePOSDevice created');
+      console.log(`[PRINT] DEVICE_TYPE_PRINTER value: ${device.DEVICE_TYPE_PRINTER}`);
+      
+      device.connect(printerIp, 8043, function(result) {
+        console.log(`[PRINT] Connect result: ${result}`);
         
-        if (!response.ok) {
-          // Try to parse error details
-          return response.json().then(data => {
-            throw new Error(data.error || `HTTP ${response.status}`);
-          }).catch(() => {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-          });
+        if (result !== 'OK' && result !== 'SSL_CONNECT_OK') {
+          console.error(`[PRINT] Connection error: ${result}`);
+          reject(new Error(`Connect failed: ${result}`));
+          return;
         }
         
-        return response.json();
-      })
-      .then(data => {
-        console.log(`[PRINT] Success response:`, data);
-        console.log(`[PRINT] Printed ${data.itemName} for Table ${data.table}, Order ${data.orderId}`);
-        resolve(data);
-      })
-      .catch(error => {
-        console.error(`[PRINT] Error:`, error.message);
-        reject(error);
+        console.log('[PRINT] Connected! Creating device...');
+        
+        // Create device
+        const devId = `ticket_${Date.now()}`;
+        console.log(`[PRINT] Creating device with ID: ${devId}`);
+        
+        device.createDevice(devId, device.DEVICE_TYPE_PRINTER, {}, function(printer, code) {
+          console.log(`[PRINT] createDevice callback: code=${code}, printer=${printer ? 'YES' : 'NO'}`);
+          
+          if (code !== 'OK') {
+            console.error(`[PRINT] CreateDevice error: ${code}`);
+            reject(new Error(`CreateDevice failed: ${code}`));
+            return;
+          }
+          
+          try {
+            console.log('[PRINT] Device created! Building receipt...');
+            
+            // Build receipt with all items
+            printer.addTextAlign('center');
+            printer.addText('=== ORDER TICKET ===');
+            printer.addFeed();
+            
+            printer.addText('TABLE ' + order.table);
+            printer.addFeed();
+            
+            printer.addText('Order: ' + order.id);
+            printer.addFeed();
+            
+            printer.addText(new Date().toLocaleTimeString());
+            printer.addFeed();
+            
+            printer.addTextAlign('left');
+            printer.addFeed();
+            
+            // Add all items
+            order.items.forEach((item, idx) => {
+              printer.addText(`${idx + 1}. ${item.name}`);
+              printer.addText(`   Qty: ${item.qty}`);
+              if (item.notes) {
+                printer.addText(`   Notes: ${item.notes}`);
+              }
+              printer.addFeed();
+            });
+            
+            // Total
+            printer.addTextAlign('center');
+            printer.addFeed();
+            printer.addText(`Total: $${order.total}`);
+            printer.addFeed();
+            printer.addFeed();
+            
+            printer.addCut('feed');
+            
+            console.log('[PRINT] Receipt built, sending...');
+            
+            // Set handlers
+            printer.onreceive = function(resp) {
+              console.log('[PRINT] Receive callback:', resp);
+              device.deleteDevice(printer, function() {
+                console.log('[PRINT] Device deleted');
+              });
+              
+              if (resp && resp.success) {
+                console.log('[PRINT] ✓ Print succeeded!');
+                resolve({ ok: true });
+              } else {
+                console.error(`[PRINT] ✗ Print failed: ${resp?.code || 'unknown'}`);
+                reject(new Error(`Print failed: ${resp?.code || 'unknown'}`));
+              }
+            };
+            
+            printer.onerror = function(err) {
+              console.error('[PRINT] Error callback:', err);
+              device.deleteDevice(printer, function() {});
+              reject(new Error(`Printer error: ${err?.code || 'unknown'}`));
+            };
+            
+            // Send
+            printer.send();
+            console.log('[PRINT] send() called');
+            
+          } catch (e) {
+            console.error(`[PRINT] Exception: ${e.message}`);
+            reject(e);
+          }
+        });
+        
       });
       
     } catch (e) {
