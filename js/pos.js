@@ -465,131 +465,101 @@ function saveOrder(order) {
   localStorage.setItem('pos_orders', JSON.stringify(orders));
 }
 
-// Print Order - 1 ticket per item
+// Print Order - via Cloudflare API
 async function printOrder(order) {
   const config = JSON.parse(localStorage.getItem('pos_config') || '{}');
   const foodPrinter = config.printer?.food;
   const drinkPrinter = config.printer?.drink;
   
-  console.log('Printing order:', order);
-  console.log('Printer config:', config);
+  console.log('=== PRINT ORDER START ===');
+  console.log('Order:', order.id, 'Table:', order.table);
+  console.log('Food printer:', foodPrinter);
+  console.log('Drink printer:', drinkPrinter);
   
-  // Group items by printer
   const printTasks = [];
+  let itemCount = 0;
   
-  console.log(`Processing ${order.items.length} items for printing...`);
-  order.items.forEach((item, index) => {
-    console.log(`Item ${index + 1}:`, item.name, 'Printer:', item.printer, 'Qty:', item.qty);
+  // Queue all print tasks
+  for (const item of order.items) {
     const printerConfig = item.printer === 'food' ? foodPrinter : drinkPrinter;
-    console.log(`  Printer config for ${item.printer}:`, printerConfig);
     
-    if (printerConfig && printerConfig.ip) {
-      // Print each item 'qty' times
-      for (let i = 0; i < item.qty; i++) {
-        console.log(`  Adding print task ${i+1}/${item.qty} for ${item.name}`);
-        printTasks.push(
-          printSingleItem(printerConfig.ip, order, item, i + 1)
-            .then(() => console.log(`✓ Printed: ${item.name} (${i+1}/${item.qty})`))
-            .catch(err => console.error(`✗ Print failed: ${item.name}`, err))
-        );
-      }
-    } else {
-      console.warn(`  No valid printer config for ${item.name} (${item.printer})`);
+    if (!printerConfig || !printerConfig.ip) {
+      console.warn(`⚠ No printer configured for ${item.printer}: ${item.name}`);
+      continue;
     }
-  });
+    
+    // Print each quantity as separate ticket
+    for (let i = 0; i < item.qty; i++) {
+      itemCount++;
+      const copyNum = i + 1;
+      console.log(`  Queueing: ${item.name} (${copyNum}/${item.qty}) → ${printerConfig.ip}`);
+      
+      printTasks.push(
+        printSingleItem(printerConfig.ip, printerConfig.port, order, item, copyNum)
+          .then(() => {
+            console.log(`  ✓ Printed: ${item.name} (${copyNum}/${item.qty})`);
+          })
+          .catch(err => {
+            console.error(`  ✗ Print failed: ${item.name} - ${err.message}`);
+          })
+      );
+      
+      // Small delay between queue additions
+      await new Promise(r => setTimeout(r, 100));
+    }
+  }
   
-  console.log(`Total print tasks queued: ${printTasks.length}`);
+  console.log(`Total items queued: ${itemCount}`);
   
-  await Promise.allSettled(printTasks);
+  // Send all in parallel
+  if (printTasks.length > 0) {
+    await Promise.allSettled(printTasks);
+  }
+  
+  console.log('=== PRINT ORDER COMPLETE ===\n');
 }
 
-// Print Single Item Ticket
-function printSingleItem(printerIp, order, item, copyNumber) {
+// Print Single Item via Cloudflare API
+function printSingleItem(printerIp, printerPort, order, item, copyNumber) {
   return new Promise((resolve, reject) => {
-    try {
-      const eposDevice = new epson.ePOSDevice();
-      // Use unique device ID for each print task to avoid conflicts
-      const deviceId = `printer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-      eposDevice.connect(printerIp, 8043, function(data) {
-        if (data === 'OK' || data === 'SSL_CONNECT_OK') {
-          eposDevice.createDevice(deviceId, eposDevice.DEVICE_TYPE_PRINTER, {
-            crypto: false,
-            buffer: false
-          }, function(devobj, retcode) {
-            if (retcode === 'OK') {
-              const printer = devobj;
-              
-              // Build single-item receipt
-              // Header - TABLE (Large, Centered)
-              printer.addTextAlign(printer.ALIGN_CENTER);
-              printer.addTextSize(2, 2);
-              printer.addText('TABLE ' + order.table);
-              printer.addFeedLine(1);
-              
-              // Order Info (Normal, Centered)
-              printer.addTextSize(1, 1);
-              printer.addText('Order: ' + order.id);
-              printer.addFeedLine(1);
-              printer.addText('Time: ' + new Date().toLocaleTimeString());
-              printer.addFeedLine(1);
-              printer.addText('================================');
-              printer.addFeedLine(2);
-              
-              // Item Name (Large, Centered)
-              printer.addTextSize(2, 2);
-              printer.addText(item.name);
-              printer.addFeedLine(1);
-              
-              // Attributes (Normal, Left)
-              printer.addTextSize(1, 1);
-              if (item.attrs && Object.keys(item.attrs).length > 0) {
-                printer.addTextAlign(printer.ALIGN_LEFT);
-                Object.entries(item.attrs).forEach(([key, value]) => {
-                  printer.addText('  ' + key + ': ' + value);
-                  printer.addFeedLine(1);
-                });
-                printer.addTextAlign(printer.ALIGN_CENTER);
-              }
-              
-              // Copy Info (Normal, Centered)
-              printer.addFeedLine(1);
-              printer.addText('Copy ' + copyNumber + ' of ' + item.qty);
-              printer.addFeedLine(1);
-              printer.addText(item.printer.toUpperCase() + ' PRINTER');
-              printer.addFeedLine(1);
-              
-              printer.addFeedLine(3);
-              printer.addCut(printer.CUT_FEED);
-              
-              printer.send();
-              
-              printer.onreceive = function(res) {
-                eposDevice.deleteDevice(printer);
-                eposDevice.disconnect();
-                if (res.success) {
-                  resolve();
-                } else {
-                  reject(new Error('Print failed: ' + res.code));
-                }
-              };
-              
-              printer.onerror = function(err) {
-                eposDevice.deleteDevice(printer);
-                eposDevice.disconnect();
-                reject(new Error('Printer error: ' + err.status));
-              };
-            } else {
-              eposDevice.disconnect();
-              reject(new Error('Failed to create printer: ' + retcode));
-            }
-          });
-        } else {
-          reject(new Error('Connection failed: ' + data));
-        }
-      });
-    } catch (e) {
-      reject(e);
-    }
+    console.log(`[PRINT] Sending request for: ${item.name} copy ${copyNumber}/${item.qty}`);
+    
+    const payload = {
+      printerIp,
+      printerPort: printerPort || 8043,
+      order: {
+        id: order.id,
+        table: order.table
+      },
+      item: {
+        name: item.name,
+        qty: item.qty,
+        printer: item.printer
+      },
+      copyNumber
+    };
+    
+    fetch('/api/print-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    .then(res => {
+      if (!res.ok) {
+        return res.json().then(data => {
+          throw new Error(data.error || `HTTP ${res.status}`);
+        });
+      }
+      return res.json();
+    })
+    .then(data => {
+      console.log(`[PRINT] ✓ Success:`, data);
+      resolve(data);
+    })
+    .catch(err => {
+      console.error(`[PRINT] ✗ Error:`, err.message);
+      reject(err);
+    });
   });
 }
 
