@@ -610,10 +610,14 @@ async function submitOrder() {
     printResults: []
   };
   
-  // Get printer settings from localStorage
-  const config = JSON.parse(localStorage.getItem('printerConfig') || '{}');
+  // Get printer settings from localStorage (same key as admin panel uses)
+  const config = JSON.parse(localStorage.getItem('pos_config') || '{}');
   const foodPrinter = config.printer?.food;
   const drinkPrinter = config.printer?.drink;
+  
+  console.log('Printer config:', config);
+  console.log('Food printer:', foodPrinter);
+  console.log('Drink printer:', drinkPrinter);
   
   // Try direct printing to configured printers
   const printPromises = [];
