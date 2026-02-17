@@ -505,6 +505,82 @@ function renderOrderReview() {
   $q('#confirmSubmit').addEventListener('click', submitOrder);
 }
 
+// Direct printer communication using ePOS SDK
+function printToEpson(printerIp, orderData) {
+  return new Promise((resolve, reject) => {
+    try {
+      const eposDevice = new epson.ePOSDevice();
+      
+      eposDevice.connect(printerIp, 8008, function(data) {
+        if (data === 'OK' || data === 'SSL_CONNECT_OK') {
+          eposDevice.createDevice('local_printer', eposDevice.DEVICE_TYPE_PRINTER, {
+            crypto: false,
+            buffer: false
+          }, function(devobj, retcode) {
+            if (retcode === 'OK') {
+              const printer = devobj;
+              
+              // Build receipt
+              printer.addTextAlign(printer.ALIGN_CENTER);
+              printer.addTextSize(2, 2);
+              printer.addText('TABLE ' + orderData.table + '\n');
+              printer.addTextSize(1, 1);
+              printer.addText('Order: ' + orderData.id + '\n');
+              printer.addText('================================\n');
+              printer.addTextAlign(printer.ALIGN_LEFT);
+              
+              // Print items
+              orderData.items.forEach(item => {
+                printer.addText(item.name + '\n');
+                if (item.attrs && Object.keys(item.attrs).length > 0) {
+                  Object.entries(item.attrs).forEach(([key, value]) => {
+                    printer.addText('  + ' + key + ': ' + value + '\n');
+                  });
+                }
+                printer.addText('  Qty: ' + item.qty + ' x $' + item.price + '\n');
+                printer.addText('\n');
+              });
+              
+              printer.addText('--------------------------------\n');
+              printer.addTextAlign(printer.ALIGN_RIGHT);
+              printer.addTextSize(1, 1);
+              printer.addText('TOTAL: $' + orderData.total + '\n');
+              printer.addFeedLine(3);
+              printer.addCut(printer.CUT_FEED);
+              
+              // Send
+              printer.send();
+              
+              printer.onreceive = function(res) {
+                eposDevice.deleteDevice(printer);
+                eposDevice.disconnect();
+                if (res.success) {
+                  resolve({ success: true, printer: printerIp });
+                } else {
+                  reject(new Error('Print failed: ' + res.code));
+                }
+              };
+              
+              printer.onerror = function(err) {
+                eposDevice.deleteDevice(printer);
+                eposDevice.disconnect();
+                reject(new Error('Printer error: ' + err.status));
+              };
+            } else {
+              eposDevice.disconnect();
+              reject(new Error('Failed to create printer: ' + retcode));
+            }
+          });
+        } else {
+          reject(new Error('Connection failed: ' + data));
+        }
+      });
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
 async function submitOrder() {
   if (!SELECTED_TABLE) {
     alert(t('selectTableFirst'));
@@ -534,19 +610,45 @@ async function submitOrder() {
     printResults: []
   };
   
-  // Try to send to server for printing
-  try {
-    const response = await fetch('/api/order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(order)
-    });
-    if (response.ok) {
-      const result = await response.json();
-      console.log('Order sent to server, print result:', result);
-    }
-  } catch (e) {
-    console.log('Server not available, saving locally only');
+  // Get printer settings from localStorage
+  const config = JSON.parse(localStorage.getItem('printerConfig') || '{}');
+  const foodPrinter = config.printer?.food;
+  const drinkPrinter = config.printer?.drink;
+  
+  // Try direct printing to configured printers
+  const printPromises = [];
+  
+  if (foodPrinter && foodPrinter.ip) {
+    printPromises.push(
+      printToEpson(foodPrinter.ip, order)
+        .then(res => {
+          console.log('Food printer success:', res);
+          order.printResults.push({ printer: 'food', status: 'success' });
+        })
+        .catch(err => {
+          console.log('Food printer failed:', err.message);
+          order.printResults.push({ printer: 'food', status: 'failed', error: err.message });
+        })
+    );
+  }
+  
+  if (drinkPrinter && drinkPrinter.ip) {
+    printPromises.push(
+      printToEpson(drinkPrinter.ip, order)
+        .then(res => {
+          console.log('Drink printer success:', res);
+          order.printResults.push({ printer: 'drink', status: 'success' });
+        })
+        .catch(err => {
+          console.log('Drink printer failed:', err.message);
+          order.printResults.push({ printer: 'drink', status: 'failed', error: err.message });
+        })
+    );
+  }
+  
+  // Wait for all print attempts
+  if (printPromises.length > 0) {
+    await Promise.allSettled(printPromises);
   }
   
   // Also save locally

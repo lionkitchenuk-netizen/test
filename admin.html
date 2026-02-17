@@ -181,8 +181,8 @@
   <script src="js/admin.js"></script>
   <script src="epos-2.27.0.js"></script>
   <script>
-    // Epson TM-m30 HTTP Print - uses printer's built-in web server
-    async function testPrintEpos() {
+    // Direct browser-to-printer using Epson ePOS SDK
+    function testPrintEpos() {
       const ip = document.getElementById('eposIp').value;
       const status = document.getElementById('eposStatus');
       
@@ -192,40 +192,69 @@
         return;
       }
       
-      status.textContent = 'Sending print via HTTP...';
+      status.textContent = 'Connecting to printer...';
       status.style.color = '#666';
       
       try {
-        // TM-m30 can print via HTTP POST to its web interface
-        // Build ESC/POS commands manually
-        const ESC = '\x1B';
-        const LF = '\x0A';
+        // Create ePOS Device object
+        var eposDevice = new epson.ePOSDevice();
         
-        let printData = '';
-        printData += ESC + '@';  // Initialize
-        printData += 'TEST PRINT' + LF;
-        printData += '==========' + LF + LF;
-        printData += 'Hello World!' + LF;
-        printData += LF + LF + LF + LF;
-        
-        // Send via server proxy to avoid CORS
-        const response = await fetch('/api/print/http', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ip: ip,
-            data: printData
-          })
+        // Connect to printer
+        eposDevice.connect(ip, 8008, function(data) {
+          if (data === 'OK' || data === 'SSL_CONNECT_OK') {
+            status.textContent = 'Connected! Creating print job...';
+            
+            // Create printer object
+            eposDevice.createDevice('local_printer', eposDevice.DEVICE_TYPE_PRINTER, {
+              crypto: false,
+              buffer: false
+            }, function(devobj, retcode) {
+              if (retcode === 'OK') {
+                var printer = devobj;
+                
+                // Build print document
+                printer.addTextAlign(printer.ALIGN_CENTER);
+                printer.addText('TEST PRINT\n');
+                printer.addText('=========================\n');
+                printer.addTextAlign(printer.ALIGN_LEFT);
+                printer.addText('Hello World!\n');
+                printer.addText('Epson ePOS SDK Print\n');
+                printer.addFeedLine(3);
+                printer.addCut(printer.CUT_FEED);
+                
+                // Send to printer
+                printer.send();
+                
+                // Handle response
+                printer.onreceive = function(res) {
+                  if (res.success) {
+                    status.textContent = 'Print sent successfully!';
+                    status.style.color = 'green';
+                  } else {
+                    status.textContent = 'Print error: ' + res.code;
+                    status.style.color = 'red';
+                  }
+                  eposDevice.deleteDevice(printer);
+                  eposDevice.disconnect();
+                };
+                
+                printer.onerror = function(err) {
+                  status.textContent = 'Printer error: ' + err.status;
+                  status.style.color = 'red';
+                  eposDevice.deleteDevice(printer);
+                  eposDevice.disconnect();
+                };
+              } else {
+                status.textContent = 'Failed to create printer object: ' + retcode;
+                status.style.color = 'red';
+                eposDevice.disconnect();
+              }
+            });
+          } else {
+            status.textContent = 'Connection failed: ' + data;
+            status.style.color = 'red';
+          }
         });
-        
-        if (response.ok) {
-          status.textContent = 'Print sent! Check printer';
-          status.style.color = 'green';
-        } else {
-          const err = await response.text();
-          status.textContent = 'Error: ' + err;
-          status.style.color = 'red';
-        }
       } catch (e) {
         status.textContent = 'Error: ' + e.message;
         status.style.color = 'red';
