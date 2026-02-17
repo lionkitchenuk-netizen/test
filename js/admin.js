@@ -382,7 +382,8 @@ function resetToDefaults() {
     localStorage.clear();
     initData();
     loadCSVPreview(document.getElementById('csvSelect').value);
-    loadOrders();
+    loadPendingOrders();
+    loadTablesManagement();
     loadConfig();
     alert('Data reset to defaults!');
   }
@@ -417,9 +418,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (validateCSV(sel.value, txt)) alert(t('validationPassed'));
     else alert(t('validationFailed'));
   });
-
-  loadOrders();
-  setInterval(loadOrders, 3000);
 
   loadConfig();
   document.getElementById('saveConfig').addEventListener('click', saveConfig);

@@ -5,16 +5,117 @@ let ATTRIBUTES = [];
 let SELECTED_TABLE = null;
 let CART = [];
 let CURRENT_CATEGORY = 'all';
+let CURRENT_LANG = 'en';
+
+// Translation dictionaries
+const TRANSLATIONS = {
+  en: {
+    'pos-title': '🍽️ POS System',
+    'select-table': 'Select Table',
+    'your-order': '🛒 Your Order',
+    'total': 'Total:',
+    'preview-tickets': '📄 Preview Tickets',
+    'submit-order': 'Submit Order',
+    'ticket-preview': '📄 Ticket Preview',
+    'print-submit': 'Print & Submit Order',
+    'back-cart': '← Back to Cart',
+    'table': 'Table',
+    'all': 'All',
+    'food': 'Food',
+    'drink': 'Drink',
+    'single': 'Single',
+    'set': 'Set',
+    'cold': 'Cold',
+    'hot': 'Hot',
+    'qty': 'Qty',
+    'remove': 'Remove',
+    'empty-cart': 'Cart is empty',
+    'add-items': 'Add items to get started!',
+    'order-submitted': 'Order submitted and sent to printer!',
+    'order-failed': 'Failed to submit order',
+    'select-table-first': 'Please select a table first!'
+  },
+  zh: {
+    'pos-title': '🍽️ 點餐系統',
+    'select-table': '選擇桌號',
+    'your-order': '🛒 您的訂單',
+    'total': '總計:',
+    'preview-tickets': '📄 預覽小票',
+    'submit-order': '提交訂單',
+    'ticket-preview': '📄 小票預覽',
+    'print-submit': '打印並提交訂單',
+    'back-cart': '← 返回購物車',
+    'table': '桌號',
+    'all': '全部',
+    'food': '食物',
+    'drink': '飲品',
+    'single': '單點',
+    'set': '套餐',
+    'cold': '冷飲',
+    'hot': '熱飲',
+    'qty': '數量',
+    'remove': '移除',
+    'empty-cart': '購物車是空的',
+    'add-items': '開始添加商品吧!',
+    'order-submitted': '訂單已提交並發送至打印機!',
+    'order-failed': '提交訂單失敗',
+    'select-table-first': '請先選擇桌號!'
+  }
+};
+
+// Toggle Language
+function toggleLanguage() {
+  CURRENT_LANG = CURRENT_LANG === 'en' ? 'zh' : 'en';
+  localStorage.setItem('pos_lang', CURRENT_LANG);
+  
+  // Update language button
+  document.getElementById('langToggle').textContent = CURRENT_LANG === 'en' ? '中文' : 'EN';
+  
+  // Update all translated elements
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const translation = TRANSLATIONS[CURRENT_LANG][key];
+    if (translation) {
+      el.textContent = translation;
+    }
+  });
+  
+  // Refresh UI
+  renderCategories();
+  renderMenu();
+  updateCart();
+}
+
+// Get translation
+function t(key) {
+  return TRANSLATIONS[CURRENT_LANG][key] || key;
+}
 
 // Load data from localStorage
 function loadData() {
   const tablesData = localStorage.getItem('pos_tables');
   const menuData = localStorage.getItem('pos_menu');
   const attrsData = localStorage.getItem('pos_attributes');
+  const savedLang = localStorage.getItem('pos_lang');
   
   TABLES = tablesData ? JSON.parse(tablesData) : getDefaultTables();
   MENU = menuData ? JSON.parse(menuData) : getDefaultMenu();
   ATTRIBUTES = attrsData ? JSON.parse(attrsData) : getDefaultAttributes();
+  CURRENT_LANG = savedLang || 'en';
+  
+  // Ensure menu is saved to localStorage
+  if (!menuData) {
+    localStorage.setItem('pos_menu', JSON.stringify(MENU));
+  }
+  if (!tablesData) {
+    localStorage.setItem('pos_tables', JSON.stringify(TABLES));
+  }
+  if (!attrsData) {
+    localStorage.setItem('pos_attributes', JSON.stringify(ATTRIBUTES));
+  }
+  
+  // Update language button
+  document.getElementById('langToggle').textContent = CURRENT_LANG === 'en' ? '中文' : 'EN';
 }
 
 function getDefaultTables() {
@@ -101,7 +202,7 @@ function renderTables() {
 // Select Table
 function selectTable(tableNumber) {
   SELECTED_TABLE = tableNumber;
-  document.getElementById('headerInfo').textContent = `Table ${tableNumber}`;
+  document.getElementById('headerInfo').textContent = `${t('table')} ${tableNumber}`;
   document.getElementById('tableView').classList.add('hidden');
   document.getElementById('menuView').classList.remove('hidden');
   document.getElementById('cartFab').classList.remove('hidden');
@@ -115,11 +216,11 @@ function renderCategories() {
   tabs.innerHTML = '';
   
   const categories = [
-    { id: 'all', name: '🍽️ All', icon: '' },
-    { id: 'Food-Set', name: '🍱 Set Meals', icon: '' },
-    { id: 'Food-Single', name: '🍜 Single Items', icon: '' },
-    { id: 'Drink-Cold', name: '🥤 Cold Drinks', icon: '' },
-    { id: 'Drink-Hot', name: '☕ Hot Drinks', icon: '' }
+    { id: 'all', name: `🍽️ ${t('all')}`, icon: '' },
+    { id: 'Food-Set', name: `🍱 ${t('set')}`, icon: '' },
+    { id: 'Food-Single', name: `🍜 ${t('single')}`, icon: '' },
+    { id: 'Drink-Cold', name: `🥤 ${t('cold')}`, icon: '' },
+    { id: 'Drink-Hot', name: `☕ ${t('hot')}`, icon: '' }
   ];
   
   categories.forEach(cat => {
@@ -217,7 +318,7 @@ function renderCartItems() {
   const container = document.getElementById('cartItems');
   
   if (CART.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🛒</div><div>Cart is empty</div></div>';
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🛒</div><div>${t('empty-cart')}</div><p style="font-size: 0.9rem; color: #999; margin-top: 0.5rem;">${t('add-items')}</p></div>`;
     document.getElementById('submitOrder').disabled = true;
     return;
   }
@@ -303,9 +404,9 @@ async function submitOrder() {
   document.getElementById('menuView').classList.add('hidden');
   document.getElementById('tableView').classList.remove('hidden');
   document.getElementById('cartFab').classList.add('hidden');
-  document.getElementById('headerInfo').textContent = 'Select Table';
+  document.getElementById('headerInfo').textContent = t('select-table');
   
-  showSuccessMessage(`Order #${orderId} submitted!`);
+  showSuccessMessage(t('order-submitted'));
 }
 
 // Save Order
@@ -327,20 +428,28 @@ async function printOrder(order) {
   // Group items by printer
   const printTasks = [];
   
-  order.items.forEach(item => {
+  console.log(`Processing ${order.items.length} items for printing...`);
+  order.items.forEach((item, index) => {
+    console.log(`Item ${index + 1}:`, item.name, 'Printer:', item.printer, 'Qty:', item.qty);
     const printerConfig = item.printer === 'food' ? foodPrinter : drinkPrinter;
+    console.log(`  Printer config for ${item.printer}:`, printerConfig);
     
     if (printerConfig && printerConfig.ip) {
       // Print each item 'qty' times
       for (let i = 0; i < item.qty; i++) {
+        console.log(`  Adding print task ${i+1}/${item.qty} for ${item.name}`);
         printTasks.push(
           printSingleItem(printerConfig.ip, order, item, i + 1)
-            .then(() => console.log(`Printed: ${item.name} (${i+1}/${item.qty})`))
-            .catch(err => console.error(`Print failed: ${item.name}`, err))
+            .then(() => console.log(`✓ Printed: ${item.name} (${i+1}/${item.qty})`))
+            .catch(err => console.error(`✗ Print failed: ${item.name}`, err))
         );
       }
+    } else {
+      console.warn(`  No valid printer config for ${item.name} (${item.printer})`);
     }
   });
+  
+  console.log(`Total print tasks queued: ${printTasks.length}`);
   
   await Promise.allSettled(printTasks);
 }
@@ -363,27 +472,27 @@ function printSingleItem(printerIp, order, item, copyNumber) {
               // Build single-item receipt
               printer.addTextAlign(printer.ALIGN_CENTER);
               printer.addTextSize(2, 2);
-              printer.addText(`TABLE ${order.table}\\n`);
+              printer.addText(`TABLE ${order.table}\n`);
               printer.addTextSize(1, 1);
-              printer.addText(`Order: ${order.id}\\n`);
-              printer.addText(`Time: ${new Date().toLocaleTimeString()}\\n`);
-              printer.addText('================================\\n');
+              printer.addText(`Order: ${order.id}\n`);
+              printer.addText(`Time: ${new Date().toLocaleTimeString()}\n`);
+              printer.addText('================================\n');
               
               printer.addTextSize(2, 2);
-              printer.addText(`${item.name}\\n`);
+              printer.addText(`${item.name}\n`);
               printer.addTextSize(1, 1);
               
               if (item.attrs && Object.keys(item.attrs).length > 0) {
                 Object.entries(item.attrs).forEach(([key, value]) => {
-                  printer.addText(`  ${key}: ${value}\\n`);
+                  printer.addText(`  ${key}: ${value}\n`);
                 });
               }
               
-              printer.addText('\\n');
+              printer.addText('\n');
               printer.addTextAlign(printer.ALIGN_CENTER);
               printer.addTextSize(1, 1);
-              printer.addText(`Copy ${copyNumber} of ${item.qty}\\n`);
-              printer.addText(`${item.printer.toUpperCase()} PRINTER\\n`);
+              printer.addText(`Copy ${copyNumber} of ${item.qty}\n`);
+              printer.addText(`${item.printer.toUpperCase()} PRINTER\n`);
               
               printer.addFeedLine(3);
               printer.addCut(printer.CUT_FEED);
@@ -420,14 +529,107 @@ function printSingleItem(printerIp, order, item, copyNumber) {
   });
 }
 
+// Generate Ticket Preview Text
+function generateTicketPreview(order, item, copyNumber) {
+  let preview = '';
+  preview += `       TABLE ${order.table}        \n\n`;
+  preview += `Order: ${order.id}\n`;
+  preview += `Time: ${new Date().toLocaleTimeString()}\n`;
+  preview += `================================\n\n`;
+  preview += `${item.name}\n\n`;
+  
+  if (item.attrs && Object.keys(item.attrs).length > 0) {
+    Object.entries(item.attrs).forEach(([key, value]) => {
+      preview += `  ${key}: ${value}\n`;
+    });
+    preview += '\n';
+  }
+  
+  preview += `Copy ${copyNumber} of ${item.qty}\n`;
+  preview += `${item.printer.toUpperCase()} PRINTER\n`;
+  
+  return preview;
+}
+
+// Generate Order ID
+function generateOrderId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+// Show Preview Modal
+function showPreview() {
+  if (CART.length === 0) {
+    alert(t('empty-cart'));
+    return;
+  }
+
+  if (!SELECTED_TABLE) {
+    alert(t('select-table-first'));
+    return;
+  }
+
+  const order = {
+    id: generateOrderId(),
+    table: SELECTED_TABLE,
+    items: CART,
+    total: cart.reduce((sum, item) => sum + item.price * item.qty, 0),
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  };
+
+  const previewContainer = document.getElementById('previewTickets');
+  previewContainer.innerHTML = '';
+
+  let ticketNumber = 0;
+  order.items.forEach((item, itemIndex) => {
+    for (let i = 0; i < item.qty; i++) {
+      ticketNumber++;
+      const ticketDiv = document.createElement('div');
+      ticketDiv.className = 'ticket-preview';
+      
+      const titleDiv = document.createElement('div');
+      titleDiv.className = 'ticket-preview-title';
+      titleDiv.textContent = `Ticket #${ticketNumber} - ${item.name} (${i+1}/${item.qty})`;
+      
+      const contentDiv = document.createElement('div');
+      contentDiv.textContent = generateTicketPreview(order, item, i + 1);
+      
+      ticketDiv.appendChild(titleDiv);
+      ticketDiv.appendChild(contentDiv);
+      previewContainer.appendChild(ticketDiv);
+    }
+  });
+
+  document.getElementById('previewModal').classList.add('active');
+}
+
+// Close Preview Modal
+function closePreview() {
+  document.getElementById('previewModal').classList.remove('active');
+}
+
 // Event Listeners
 document.getElementById('cartFab').addEventListener('click', openCart);
 document.getElementById('closeCart').addEventListener('click', closeCart);
 document.getElementById('submitOrder').addEventListener('click', submitOrder);
+document.getElementById('previewOrder').addEventListener('click', showPreview);
+document.getElementById('closePreview').addEventListener('click', closePreview);
+document.getElementById('submitFromPreview').addEventListener('click', () => {
+  closePreview();
+  submitOrder();
+});
+document.getElementById('backToCart').addEventListener('click', () => {
+  closePreview();
+  openCart();
+});
 
 // Close modal on backdrop click
 document.getElementById('cartModal').addEventListener('click', (e) => {
   if (e.target.id === 'cartModal') closeCart();
+});
+
+document.getElementById('previewModal').addEventListener('click', (e) => {
+  if (e.target.id === 'previewModal') closePreview();
 });
 
 // Initialize
