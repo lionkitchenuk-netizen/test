@@ -2,9 +2,35 @@ id,name,price,category,subcategory,has_attrs,printer
 1,Chicken Rice,3.50,Food,Single,true,food
 2,Beef Noodles,4.00,Food,Single,true,food
 3,Spring Roll,1.50,Food,Single,false,food
-4,Lunch Set A,6.50,Food,Set,false,food
-5,Dinner Set B,7.50,Food,Set,false,food
-6,Iced Lemon Tea,1.50,Drink,Cold,false,drink
-7,Hot Coffee,2.00,Drink,Hot,false,drink
-8,Iced Milk Tea,2.50,Drink,Cold,false,drink
-9,Hot Green Tea,1.80,Drink,Hot,false,drink
+4,Fried Rice,4.50,Food,Single,true,food
+5,Wonton Soup,3.80,Food,Single,false,food
+6,Char Siu Rice,4.20,Food,Single,false,food
+7,Fish Ball Noodles,3.90,Food,Single,true,food
+8,Sweet & Sour Pork,5.50,Food,Single,false,food
+9,Kung Pao Chicken,5.20,Food,Single,true,food
+10,Vegetable Chow Mein,4.30,Food,Single,false,food
+11,Dumplings (6pcs),3.50,Food,Single,false,food
+12,Egg Fried Rice,3.80,Food,Single,false,food
+13,BBQ Pork Bun,2.50,Food,Single,false,food
+14,Prawn Toast,3.20,Food,Single,false,food
+15,Lunch Set A,6.50,Food,Set,false,food
+16,Lunch Set B,7.00,Food,Set,false,food
+17,Dinner Set A,8.50,Food,Set,false,food
+18,Dinner Set B,9.00,Food,Set,false,food
+19,Family Set (4ppl),28.00,Food,Set,false,food
+20,Iced Lemon Tea,1.50,Drink,Cold,false,drink
+21,Iced Milk Tea,2.50,Drink,Cold,false,drink
+22,Iced Coffee,2.30,Drink,Cold,false,drink
+23,Cola,1.80,Drink,Cold,false,drink
+24,Sprite,1.80,Drink,Cold,false,drink
+25,Orange Juice,2.20,Drink,Cold,false,drink
+26,Apple Juice,2.20,Drink,Cold,false,drink
+27,Iced Green Tea,1.80,Drink,Cold,false,drink
+28,Iced Milo,2.50,Drink,Cold,false,drink
+29,Bubble Tea,3.50,Drink,Cold,false,drink
+30,Hot Coffee,2.00,Drink,Hot,false,drink
+31,Hot Tea,1.50,Drink,Hot,false,drink
+32,Hot Green Tea,1.80,Drink,Hot,false,drink
+33,Hot Lemon Tea,1.80,Drink,Hot,false,drink
+34,Hot Milo,2.30,Drink,Hot,false,drink
+35,Hot Milk,2.00,Drink,Hot,false,drink
