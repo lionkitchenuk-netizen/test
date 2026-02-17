@@ -471,10 +471,12 @@ async function printOrder(order) {
   const foodPrinter = config.printer?.food;
   const drinkPrinter = config.printer?.drink;
   
+  console.log('\n════════════════════════════════');
   console.log('=== PRINT ORDER START ===');
-  console.log('Order:', order.id, 'Table:', order.table);
-  console.log('Food printer:', foodPrinter);
-  console.log('Drink printer:', drinkPrinter);
+  console.log('Order ID:', order.id, 'Table:', order.table);
+  console.log('Food Printer:', foodPrinter);
+  console.log('Drink Printer:', drinkPrinter);
+  console.log('════════════════════════════════\n');
   
   const printTasks = [];
   let itemCount = 0;
@@ -484,7 +486,7 @@ async function printOrder(order) {
     const printerConfig = item.printer === 'food' ? foodPrinter : drinkPrinter;
     
     if (!printerConfig || !printerConfig.ip) {
-      console.warn(`⚠ No printer configured for ${item.printer}: ${item.name}`);
+      console.warn(`⚠ WARNING: No printer configured for ${item.printer}: ${item.name}`);
       continue;
     }
     
@@ -492,15 +494,15 @@ async function printOrder(order) {
     for (let i = 0; i < item.qty; i++) {
       itemCount++;
       const copyNum = i + 1;
-      console.log(`  Queueing: ${item.name} (${copyNum}/${item.qty}) → ${printerConfig.ip}`);
+      console.log(`[PRINT-QUEUE] ${itemCount}. ${item.name} (${copyNum}/${item.qty}) → ${printerConfig.ip}:${printerConfig.port || 8043}`);
       
       printTasks.push(
         printSingleItem(printerConfig.ip, printerConfig.port, order, item, copyNum)
           .then(() => {
-            console.log(`  ✓ Printed: ${item.name} (${copyNum}/${item.qty})`);
+            console.log(`[PRINT-OK] ✓ Printed: ${item.name} (${copyNum}/${item.qty})`);
           })
           .catch(err => {
-            console.error(`  ✗ Print failed: ${item.name} - ${err.message}`);
+            console.error(`[PRINT-FAIL] ✗ Print failed: ${item.name} - ${err.message}`);
           })
       );
       
@@ -509,20 +511,26 @@ async function printOrder(order) {
     }
   }
   
-  console.log(`Total items queued: ${itemCount}`);
+  console.log(`\n[PRINT-SUMMARY] Total items to print: ${itemCount}`);
   
   // Send all in parallel
   if (printTasks.length > 0) {
+    console.log('[PRINT-START] Sending all print requests...');
     await Promise.allSettled(printTasks);
+    console.log('[PRINT-DONE] All print tasks completed');
+  } else {
+    console.warn('[PRINT-WARN] No print tasks queued');
   }
   
-  console.log('=== PRINT ORDER COMPLETE ===\n');
+  console.log('═══════════════════════════════');
+  console.log('=== PRINT ORDER COMPLETE ===');
+  console.log('═══════════════════════════════\n');
 }
 
 // Print Single Item via Cloudflare API
 function printSingleItem(printerIp, printerPort, order, item, copyNumber) {
   return new Promise((resolve, reject) => {
-    console.log(`[PRINT] Sending request for: ${item.name} copy ${copyNumber}/${item.qty}`);
+    console.log(`[PRINT-DEBUG] Starting print for: ${item.name} copy ${copyNumber}/${item.qty}`);
     
     const payload = {
       printerIp,
@@ -539,25 +547,36 @@ function printSingleItem(printerIp, printerPort, order, item, copyNumber) {
       copyNumber
     };
     
+    console.log(`[PRINT-DEBUG] Payload:`, JSON.stringify(payload, null, 2));
+    console.log(`[PRINT-DEBUG] Calling: POST /api/print-order`);
+    
     fetch('/api/print-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
     .then(res => {
+      console.log(`[PRINT-DEBUG] Response status: ${res.status} ${res.statusText}`);
+      
       if (!res.ok) {
-        return res.json().then(data => {
-          throw new Error(data.error || `HTTP ${res.status}`);
+        return res.text().then(text => {
+          console.error(`[PRINT-DEBUG] Error response:`, text);
+          try {
+            const data = JSON.parse(text);
+            throw new Error(data.error || `HTTP ${res.status}`);
+          } catch (e) {
+            throw new Error(`HTTP ${res.status}: ${text}`);
+          }
         });
       }
       return res.json();
     })
     .then(data => {
-      console.log(`[PRINT] ✓ Success:`, data);
+      console.log(`[PRINT-DEBUG] ✓ Success:`, data);
       resolve(data);
     })
     .catch(err => {
-      console.error(`[PRINT] ✗ Error:`, err.message);
+      console.error(`[PRINT-DEBUG] ✗ Fetch error:`, err.message);
       reject(err);
     });
   });
