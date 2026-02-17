@@ -1,4 +1,103 @@
-// Admin functionality - Static Version with localStorage
+// Admin functionality - Modern POS with Payment & Table Management
+
+// Load and display pending orders
+function loadPendingOrders() {
+  const orders = JSON.parse(localStorage.getItem('pos_orders') || '[]');
+  const pending = orders.filter(o => o.status === 'pending');
+  const container = document.getElementById('pendingOrders');
+  
+  if (pending.length === 0) {
+    container.innerHTML = '<div class="empty">✅ No pending orders</div>';
+    return;
+  }
+  
+  container.innerHTML = '';
+  pending.forEach(order => {
+    const orderDiv = document.createElement('div');
+    orderDiv.className = 'order-items';
+    orderDiv.innerHTML = `
+      <div class="order-header">
+        <strong>Table ${order.table} - Order #${order.id}</strong>
+        <span class="order-time">${new Date(order.createdAt).toLocaleString()}</span>
+      </div>
+      <div>
+        ${order.items.map(item => `<div>• ${item.name} × ${item.qty} ($${item.price})</div>`).join('')}
+      </div>
+      <div class="order-total">Total: $${order.total}</div>
+      <button class="mark-paid-btn" onclick="markOrderPaid('${order.id}')">✓ Mark Paid & Complete</button>
+    `;
+    container.appendChild(orderDiv);
+  });
+}
+
+// Mark order as paid and remove from list
+function markOrderPaid(orderId) {
+  const orders = JSON.parse(localStorage.getItem('pos_orders') || '[]');
+  const updated = orders.filter(o => o.id !== orderId);
+  localStorage.setItem('pos_orders', JSON.stringify(updated));
+  loadPendingOrders();
+  alert('Order marked as paid and removed!');
+}
+
+// Load and display tables
+function loadTablesManagement() {
+  const tables = JSON.parse(localStorage.getItem('pos_tables') || '[]');
+  const container = document.getElementById('tablesManagement');
+  
+  if (tables.length === 0) {
+    container.innerHTML = '<div class="empty">No tables configured</div>';
+    return;
+  }
+  
+  container.innerHTML = '';
+  tables.forEach((table, index) => {
+    const tableDiv = document.createElement('div');
+    tableDiv.style.padding = '10px';
+    tableDiv.style.marginBottom = '10px';
+    tableDiv.style.background = '#f8f8f8';
+    tableDiv.style.borderRadius = '6px';
+    tableDiv.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong>Table ${table.number}</strong> - 
+          Capacity: ${table.capacity} seats
+        </div>
+        <button onclick="removeTable('${table.id}')" style="background:#f44336">Delete</button>
+      </div>
+    `;
+    container.appendChild(tableDiv);
+  });
+}
+
+// Add new table
+function addNewTable() {
+  const number = prompt('Enter table number:');
+  const capacity = prompt('Enter seating capacity:');
+  
+  if (!number || !capacity) return;
+  
+  const tables = JSON.parse(localStorage.getItem('pos_tables') || '[]');
+  const newTable = {
+    id: Date.now().toString(),
+    number: number,
+    capacity: parseInt(capacity),
+    status: 'available'
+  };
+  
+  tables.push(newTable);
+  localStorage.setItem('pos_tables', JSON.stringify(tables));
+  loadTablesManagement();
+}
+
+// Remove table
+function removeTable(tableId) {
+  if (!confirm('Remove this table?')) return;
+  
+  const tables = JSON.parse(localStorage.getItem('pos_tables') || '[]');
+  const updated = tables.filter(t => t.id !== tableId);
+  localStorage.setItem('pos_tables', JSON.stringify(updated));
+  loadTablesManagement();
+}
 
 const I18N = {
   en: {
@@ -339,4 +438,15 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
   });
+  
+  // Initialize new sections
+  if (document.getElementById('pendingOrders')) {
+    loadPendingOrders();
+    setInterval(loadPendingOrders, 5000); // Refresh every 5 seconds
+  }
+  
+  if (document.getElementById('tablesManagement')) {
+    loadTablesManagement();
+    document.getElementById('addTable')?.addEventListener('click', addNewTable);
+  }
 });

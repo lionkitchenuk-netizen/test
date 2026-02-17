@@ -29,12 +29,25 @@
 <body>
   <div class="admin">
     <h1>Admin</h1>
+    
+    <section>
+      <h3>📋 Pending Orders</h3>
+      <div id="pendingOrders"></div>
+    </section>
+    
+    <section>
+      <h3>🪑 Table Management</h3>
+      <div id="tablesManagement"></div>
+      <button id="addTable" style="background:#4caf50">+ Add Table</button>
+    </section>
+    
     <section>
       <h3>CSV Management</h3>
       <select id="csvSelect" style="margin-bottom:10px">
         <option value="menu.csv">menu.csv</option>
         <option value="sets.csv">sets.csv</option>
         <option value="attributes.csv">attributes.csv</option>
+        <option value="tables.csv">tables.csv</option>
       </select>
       <input type="file" id="csvFile" accept=".csv" style="margin-bottom:10px" />
       <div>

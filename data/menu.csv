@@ -1,5 +1,10 @@
-id,name,price,category,has_attrs,printer
-1,Chicken Rice,3.50,Main,true,food
-2,Beef Noodles,4.00,Main,true,food
-3,Iced Tea,1.00,Beverage,false,drink
-4,Spring Roll,1.50,Side,false,food
+id,name,price,category,subcategory,has_attrs,printer
+1,Chicken Rice,3.50,Food,Single,true,food
+2,Beef Noodles,4.00,Food,Single,true,food
+3,Spring Roll,1.50,Food,Single,false,food
+4,Lunch Set A,6.50,Food,Set,false,food
+5,Dinner Set B,7.50,Food,Set,false,food
+6,Iced Lemon Tea,1.50,Drink,Cold,false,drink
+7,Hot Coffee,2.00,Drink,Hot,false,drink
+8,Iced Milk Tea,2.50,Drink,Cold,false,drink
+9,Hot Green Tea,1.80,Drink,Hot,false,drink
