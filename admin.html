@@ -164,7 +164,7 @@
         <div style="background:#e3f2fd;padding:10px;border-radius:4px;margin-bottom:10px;font-size:0.85rem">
           <strong>Requirements:</strong>
           <ul style="margin:5px 0 0 20px;padding:0">
-            <li>Printer must have <strong>ePOS SDK enabled</strong> (port 8008)</li>
+            <li>Printer must have <strong>ePOS SDK enabled</strong> (port 8043)</li>
             <li>Browser must be on <strong>same network</strong> as printer</li>
             <li>Check printer's web interface to enable ePOS</li>
           </ul>
@@ -219,15 +219,15 @@
         return;
       }
       
-      status.textContent = 'Connecting to ' + ip + ':8008...';
+      status.textContent = 'Connecting to ' + ip + ':8043...';
       status.style.color = '#666';
       
       try {
         // Create ePOS Device object
         var eposDevice = new epson.ePOSDevice();
         
-        // Connect to printer (port 8008 is ePOS SDK WebSocket)
-        eposDevice.connect(ip, 8008, function(data) {
+        // Connect to printer (port 8043 is ePOS SDK HTTPS)
+        eposDevice.connect(ip, 8043, function(data) {
           if (data === 'OK' || data === 'SSL_CONNECT_OK') {
             status.textContent = 'Connected! Creating print job...';
             
@@ -284,7 +284,7 @@
             // Show helpful error message
             if (data.includes('TIMEOUT')) {
               setTimeout(function() {
-                status.textContent = 'Timeout - Check: 1) Printer is on, 2) ePOS SDK enabled on port 8008, 3) Same network';
+                status.textContent = 'Timeout - Check: 1) Printer is on, 2) ePOS SDK enabled on port 8043, 3) Same network';
               }, 1000);
             }
           }

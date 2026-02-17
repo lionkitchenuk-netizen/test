@@ -511,7 +511,7 @@ function printToEpson(printerIp, orderData) {
     try {
       const eposDevice = new epson.ePOSDevice();
       
-      eposDevice.connect(printerIp, 8008, function(data) {
+      eposDevice.connect(printerIp, 8043, function(data) {
         if (data === 'OK' || data === 'SSL_CONNECT_OK') {
           eposDevice.createDevice('local_printer', eposDevice.DEVICE_TYPE_PRINTER, {
             crypto: false,
