@@ -40,24 +40,29 @@ async function handlePrintRequest(context) {
     
     // Build ePOS SOAP XML
     const soapBody = buildOrderPrintXml(order, item, copyNumber);
+    console.log('[PRINT-ORDER] Built SOAP:', soapBody.substring(0, 200) + '...');
     
-    // Send to printer
+    // Send to printer via HTTPS
     const printerUrl = `https://${printerIp}:${port}/cgi-bin/epos/service.cgi?timeout=10000`;
+    console.log(`[PRINT-ORDER] Sending to: ${printerUrl}`);
     
     try {
-      console.log(`[PRINT-ORDER] Sending to ${printerUrl}`);
       const response = await fetch(printerUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'text/xml; charset=utf-8',
           'SOAPAction': '""'
         },
-        body: soapBody,
-        timeout: 15000
+        body: soapBody
       });
       
-      if (response.ok) {
-        console.log(`[PRINT-ORDER] ✓ Print successful to ${item.name}`);
+      const responseText = await response.text();
+      console.log(`[PRINT-ORDER] Printer response status: ${response.status}`);
+      console.log(`[PRINT-ORDER] Printer response text: ${responseText.substring(0, 300)}`);
+      
+      // Success if response is OK and contains success indicator
+      if (response.ok && responseText.includes('success')) {
+        console.log(`[PRINT-ORDER] ✓ Print successful`);
         return jsonResponse({
           ok: true,
           message: 'Print sent successfully',
@@ -66,11 +71,11 @@ async function handlePrintRequest(context) {
           table: order.table
         });
       } else {
-        console.error(`[PRINT-ORDER] Printer error: ${response.status}`);
+        console.error(`[PRINT-ORDER] Printer returned non-success: ${response.status}`);
         return jsonResponse(
           { 
-            error: `Printer error: ${response.status}`,
-            hint: 'Check printer power and network connection'
+            error: `EPOS returned: ${response.statusText}`,
+            details: responseText.substring(0, 200)
           },
           response.status
         );
@@ -81,9 +86,9 @@ async function handlePrintRequest(context) {
         {
           error: 'Cannot connect to printer',
           details: fetchErr.message,
-          hint: `Verify printer IP: ${printerIp}:${port}`
+          hint: `Verify printer: ${printerIp}:${port}`
         },
-        503
+        500
       );
     }
   } catch (err) {
@@ -97,7 +102,7 @@ async function handlePrintRequest(context) {
 
 /**
  * Build ePOS SOAP XML for order item printing
- * Uses same format as working test-print
+ * Matches the format from working test-print endpoint
  */
 function buildOrderPrintXml(order, item, copyNumber) {
   const timestamp = new Date().toLocaleTimeString();
@@ -117,9 +122,9 @@ function buildOrderPrintXml(order, item, copyNumber) {
 <text align="center"><![CDATA[Order: ${orderId}]]></text>
 <text align="center"><![CDATA[Time: ${timestamp}]]></text>
 <feed line="1"/>
-<text align="center"><![CDATA[================================]]></text>
+<text><![CDATA[================================]]></text>
 <feed line="1"/>
-<text align="center" size="2x2"><![CDATA[${itemName}]]></text>
+<text align="center"><![CDATA[${itemName}]]></text>
 <feed line="1"/>
 <text align="center"><![CDATA[Copy ${copy} of ${qty}]]></text>
 <text align="center"><![CDATA[${printerType} PRINTER]]></text>
