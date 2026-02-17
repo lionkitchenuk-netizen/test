@@ -1,5 +1,5 @@
 // Cloudflare Pages Function: /api/print-order
-// Handles order printing by sending ePOS SOAP commands via HTTPS
+// Uses same approach as test-print - simple text-based printing
 
 export async function onRequest(context) {
   // Handle OPTIONS for CORS
@@ -27,26 +27,26 @@ async function handlePrintRequest(context) {
     const data = await context.request.json();
     const { printerIp, printerPort, order, item, copyNumber } = data;
     
-    console.log('[PRINT-ORDER] Received print request:', { printerIp, printerPort, item: item?.name, copyNumber });
+    console.log('[PRINT-ORDER] Received:', { printerIp, item: item?.name, copyNumber });
     
     if (!printerIp || !order || !item) {
-      return jsonResponse(
-        { error: 'Missing required fields: printerIp, order, item' },
-        400
-      );
+      return jsonResponse({ error: 'Missing required fields' }, 400);
     }
     
     const port = printerPort || 8043;
     
-    // Build ePOS SOAP XML
-    const soapBody = buildOrderPrintXml(order, item, copyNumber);
-    console.log('[PRINT-ORDER] Built SOAP:', soapBody.substring(0, 200) + '...');
+    // Build text title like test-print does
+    const title = `TABLE ${order.table} - ${item.name} (${copyNumber}/${item.qty})`;
+    console.log('[PRINT-ORDER] Sending:', title);
     
-    // Send to printer via HTTPS
+    // Build ePOS SOAP XML using simple format like test-print
+    const soapBody = buildSimplePrintXml(title, order.id);
+    
+    // Send to printer via HTTPS - exactly like test-print
     const printerUrl = `https://${printerIp}:${port}/cgi-bin/epos/service.cgi?timeout=10000`;
-    console.log(`[PRINT-ORDER] Sending to: ${printerUrl}`);
     
     try {
+      console.log(`[PRINT-ORDER] Posting to: ${printerUrl}`);
       const response = await fetch(printerUrl, {
         method: 'POST',
         headers: {
@@ -57,24 +57,23 @@ async function handlePrintRequest(context) {
       });
       
       const responseText = await response.text();
-      console.log(`[PRINT-ORDER] Printer response status: ${response.status}`);
-      console.log(`[PRINT-ORDER] Printer response text: ${responseText.substring(0, 300)}`);
+      console.log(`[PRINT-ORDER] Response: ${response.status}`);
+      console.log(`[PRINT-ORDER] Text: ${responseText.substring(0, 200)}`);
       
-      // Success if response is OK and contains success indicator
-      if (response.ok && responseText.includes('success')) {
-        console.log(`[PRINT-ORDER] ✓ Print successful`);
+      // Check if printer accepted it
+      if (response.ok && (responseText.includes('success'))) {
+        console.log(`[PRINT-ORDER] ✓ Success`);
         return jsonResponse({
           ok: true,
-          message: 'Print sent successfully',
+          message: 'Print successful',
           itemName: item.name,
-          copyNumber: copyNumber,
           table: order.table
         });
       } else {
-        console.error(`[PRINT-ORDER] Printer returned non-success: ${response.status}`);
+        console.log(`[PRINT-ORDER] Response not ok or no success: status=${response.status}`);
         return jsonResponse(
           { 
-            error: `EPOS returned: ${response.statusText}`,
+            error: `Printer: ${response.statusText}`,
             details: responseText.substring(0, 200)
           },
           response.status
@@ -83,51 +82,29 @@ async function handlePrintRequest(context) {
     } catch (fetchErr) {
       console.error('[PRINT-ORDER] Fetch error:', fetchErr.message);
       return jsonResponse(
-        {
-          error: 'Cannot connect to printer',
-          details: fetchErr.message,
-          hint: `Verify printer: ${printerIp}:${port}`
-        },
+        { error: 'Cannot reach printer', details: fetchErr.message },
         500
       );
     }
   } catch (err) {
-    console.error('[PRINT-ORDER] Request error:', err.message);
-    return jsonResponse(
-      { error: 'Server error', details: err.message },
-      500
-    );
+    console.error('[PRINT-ORDER] Error:', err.message);
+    return jsonResponse({ error: 'Server error', details: err.message }, 500);
   }
 }
 
-/**
- * Build ePOS SOAP XML for order item printing
- * Matches the format from working test-print endpoint
- */
-function buildOrderPrintXml(order, item, copyNumber) {
-  const timestamp = new Date().toLocaleTimeString();
-  const table = order.table?.toString() || '?';
-  const orderId = order.id || '?';
-  const itemName = item.name || 'ITEM';
-  const printerType = item.printer?.toUpperCase() || 'KITCHEN';
-  const qty = item.qty || 1;
-  const copy = copyNumber || 1;
-
+// Simple XML format like test-print
+function buildSimplePrintXml(title, orderId) {
   return `<?xml version="1.0" encoding="utf-8"?>
 <s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
 <s:Body>
 <epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">
-<text align="center"><![CDATA[TABLE ${table}]]></text>
+<text align="center"><![CDATA[${title}]]></text>
 <feed line="1"/>
-<text align="center"><![CDATA[Order: ${orderId}]]></text>
-<text align="center"><![CDATA[Time: ${timestamp}]]></text>
+<text><![CDATA[Order ID: ${orderId}]]></text>
 <feed line="1"/>
-<text><![CDATA[================================]]></text>
+<text><![CDATA[==========================]]></text>
 <feed line="1"/>
-<text align="center"><![CDATA[${itemName}]]></text>
-<feed line="1"/>
-<text align="center"><![CDATA[Copy ${copy} of ${qty}]]></text>
-<text align="center"><![CDATA[${printerType} PRINTER]]></text>
+<text><![CDATA[Time: ${new Date().toLocaleTimeString()}]]></text>
 <feed line="3"/>
 <cut type="feed"/>
 </epos-print>
@@ -135,9 +112,6 @@ function buildOrderPrintXml(order, item, copyNumber) {
 </s:Envelope>`;
 }
 
-/**
- * Helper to return JSON response with CORS headers
- */
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
